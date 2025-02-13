@@ -93,7 +93,7 @@ static int cli_run_command(App* app, const cli_command* cmd, int argc, char** ar
   return cmd->action(cmd->name, &app->flags, argc - i, &argv[i]);
 }
 
-[[noreturn]] void cli_app_run(App* app, int argc, char** argv) {
+int cli_app_run(App* app, int argc, char** argv) {
   int exit_code = 0;
 
   argc--;
@@ -116,5 +116,5 @@ static int cli_run_command(App* app, const cli_command* cmd, int argc, char** ar
 
 out:
   cli_app_deinit(app);
-  exit(exit_code);
+  return exit_code;
 }

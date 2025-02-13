@@ -48,11 +48,11 @@ typedef struct {
 
 #define CLI_HAS_FLAG(flags, flag) (flags[(size_t)flag].type != FlagNone)
 #define CLI_FLAG(name, ty) {Flag##ty, name}
-#define CLI_COMMAND(name, action, ...) \
-  (cli_command) {                      \
-    libft_static_string(name), action, {                    \
-      __VA_ARGS__                      \
-    }                                  \
+#define CLI_COMMAND(name, action, ...)   \
+  (cli_command) {                        \
+    libft_static_string(name), action, { \
+      __VA_ARGS__                        \
+    }                                    \
   }
 
 typedef struct cmd_node_s {
@@ -73,6 +73,6 @@ typedef struct {
 App cli_app_init();
 void cli_app_deinit(App* app);
 bool cli_app_register_command(App* app, const cli_command* cmd);
-[[noreturn]] void cli_app_run(App* app, int argc, char** argv);
+int cli_app_run(App* app, int argc, char** argv);
 
 #endif
