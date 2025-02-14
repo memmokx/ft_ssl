@@ -4,8 +4,8 @@
 #include <libft/string.h>
 #include <stdint.h>
 
-#define CLI_FLAGS_PER_COMMAND 32
-#define CLI_FLAGS_MAX 256
+constexpr size_t CLI_FLAGS_PER_COMMAND = 32;
+constexpr size_t CLI_FLAGS_MAX = 256;
 
 typedef enum {
   FlagNone = 0,
@@ -23,7 +23,7 @@ typedef struct {
   cli_flag_type type;
   cli_flag_value value;
   char name;
-} cli_flag;
+} cli_flag_t;
 
 /*!
  * In the ft_ssl_* subjects the flags are always a single ascii char, this
@@ -31,10 +31,12 @@ typedef struct {
  * LUT.
  */
 typedef struct {
-  cli_flag table[CLI_FLAGS_MAX];
-} cli_flags;
+  cli_flag_t table[CLI_FLAGS_MAX];
+} cli_flags_t;
 
-typedef int (*cli_command_action)(string, cli_flags*, int, char**);
+cli_flag_t* cli_flags_get(cli_flags_t* flags, char flag);
+
+typedef int (*cli_command_action)(string, cli_flags_t*, int, char**);
 
 typedef struct {
   string name;
@@ -44,35 +46,35 @@ typedef struct {
     cli_flag_type ty;
     char name;
   } flags[CLI_FLAGS_PER_COMMAND];
-} cli_command;
+} cli_command_t;
 
 #define CLI_HAS_FLAG(flags, flag) (flags[(size_t)flag].type != FlagNone)
 #define CLI_FLAG(name, ty) {Flag##ty, name}
 #define CLI_COMMAND(name, action, ...)   \
-  (cli_command) {                        \
+  (cli_command_t) {                      \
     libft_static_string(name), action, { \
       __VA_ARGS__                        \
     }                                    \
   }
 
 typedef struct cmd_node_s {
-  cli_command cmd;
+  cli_command_t cmd;
   struct cmd_node_s* next;
-} cmd_node;
+} cmd_node_t;
 
-void cmd_node_push(cmd_node** node, cmd_node* other);
-cmd_node* cmd_node_last(cmd_node* node);
-cmd_node* cmd_node_init(cli_command cmd);
-void cmd_node_deinit(cmd_node** head);
+void cmd_node_push(cmd_node_t** node, cmd_node_t* other);
+cmd_node_t* cmd_node_last(cmd_node_t* node);
+cmd_node_t* cmd_node_init(cli_command_t cmd);
+void cmd_node_deinit(cmd_node_t** head);
 
 typedef struct {
-  cli_flags flags;
-  cmd_node* cmd_head;
+  cli_flags_t flags;
+  cmd_node_t* cmd_head;
 } App;
 
 App cli_app_init();
 void cli_app_deinit(App* app);
-bool cli_app_register_command(App* app, const cli_command* cmd);
+bool cli_app_register_command(App* app, const cli_command_t* cmd);
 int cli_app_run(App* app, int argc, char** argv);
 
 #endif

@@ -14,8 +14,8 @@ void cli_app_deinit(App* app) {
   cmd_node_deinit(&app->cmd_head);
 }
 
-bool cli_app_register_command(App* app, const cli_command* cmd) {
-  cmd_node* new = cmd_node_init(*cmd);
+bool cli_app_register_command(App* app, const cli_command_t* cmd) {
+  cmd_node_t* new = cmd_node_init(*cmd);
   if (new == nullptr)
     return false;
 
@@ -23,8 +23,8 @@ bool cli_app_register_command(App* app, const cli_command* cmd) {
   return true;
 }
 
-static bool cli_command_has_flag(const cli_command* cmd, char flag) {
-  for (int i = 0; i < CLI_FLAGS_PER_COMMAND; ++i) {
+static bool cli_command_has_flag(const cli_command_t* cmd, char flag) {
+  for (size_t i = 0; i < CLI_FLAGS_PER_COMMAND && cmd->flags[i].ty != FlagNone; ++i) {
     if (cmd->flags[i].name == flag)
       return true;
   }
@@ -32,8 +32,8 @@ static bool cli_command_has_flag(const cli_command* cmd, char flag) {
   return false;
 }
 
-static cli_flag_type cli_command_flag_type(const cli_command* cmd, char flag) {
-  for (int i = 0; i < CLI_FLAGS_PER_COMMAND; ++i) {
+static cli_flag_type cli_command_flag_type(const cli_command_t* cmd, char flag) {
+  for (size_t i = 0; i < CLI_FLAGS_PER_COMMAND && cmd->flags[i].ty != FlagNone; ++i) {
     if (cmd->flags[i].name == flag)
       return cmd->flags[i].ty;
   }
@@ -41,22 +41,22 @@ static cli_flag_type cli_command_flag_type(const cli_command* cmd, char flag) {
   return FlagNone;
 }
 
-static cli_flag cli_flag_from_arg(char flag, cli_flag_type ty, char* arg) {
+static cli_flag_t cli_flag_from_arg(char flag, cli_flag_type ty, char* arg) {
   if (ty == FlagString && arg != nullptr)
-    return (cli_flag){
+    return (cli_flag_t){
         .name = flag,
         .type = ty,
         .value = {.str = string_new_owned(arg)},
     };
 
-  return (cli_flag){.name = flag, .type = ty, .value = {}};
+  return (cli_flag_t){.name = flag, .type = ty, .value = {}};
 }
 
-static cli_command* cli_get_command(App* app, string name) {
-  cmd_node* tmp = app->cmd_head;
+static cli_command_t* cli_get_command(App* app, string name) {
+  cmd_node_t* tmp = app->cmd_head;
 
   while (tmp) {
-    cli_command* cmd = &tmp->cmd;
+    cli_command_t* cmd = &tmp->cmd;
     if (string_equal(&cmd->name, &name))
       return cmd;
     tmp = tmp->next;
@@ -65,7 +65,7 @@ static cli_command* cli_get_command(App* app, string name) {
   return nullptr;
 }
 
-static int cli_run_command(App* app, const cli_command* cmd, int argc, char** argv) {
+static int cli_run_command(App* app, const cli_command_t* cmd, int argc, char** argv) {
   char flag;
   cli_flag_type ty;
 
@@ -104,10 +104,9 @@ int cli_app_run(App* app, int argc, char** argv) {
     goto out;
 
   const string name = string_new_owned(argv[0]);
-  const cli_command* cmd = cli_get_command(app, name);
+  const cli_command_t* cmd = cli_get_command(app, name);
   if (cmd == nullptr) {
-    ft_fprintf(STDERR_FILENO, "ft_ssl: Error: '%s' is an invalid command.",
-               name.ptr);
+    ft_fprintf(STDERR_FILENO, "ft_ssl: Error: '%s' is an invalid command.", name.ptr);
     exit_code = 1;
     goto out;
   }
@@ -117,4 +116,12 @@ int cli_app_run(App* app, int argc, char** argv) {
 out:
   cli_app_deinit(app);
   return exit_code;
+}
+
+cli_flag_t* cli_flags_get(cli_flags_t* flags, char flag) {
+  cli_flag_t* f = &flags->table[(size_t)flag];
+  if (f->type == FlagNone)
+    return nullptr;
+
+  return f;
 }
