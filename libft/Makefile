@@ -57,11 +57,12 @@ OBJ = $(SRC:.c=.o)
 CC				= cc
 CFLAGS			= -Wall -Werror -Wextra
 
-COLOUR_GREEN=\033[0;32m
-COLOUR_GRAY=\033[0;90m
-COLOUR_RED=\033[0;31m
-COLOUR_BLUE=\033[0;34m
-COLOUR_END=\033[0m
+COLOUR_GREEN=$(shell tput setaf 2)
+COLOUR_GRAY=$(shell tput setaf 254)
+COLOUR_RED=$(shell tput setaf 1)
+COLOUR_BLUE=$(shell tput setaf 4)
+BOLD=$(shell tput bold)
+COLOUR_END=$(shell tput sgr0)
 
 ifdef DEBUG
 	CFLAGS = -Wall -Wextra -g
@@ -85,7 +86,7 @@ all: $(NAME)
 
 $(NAME): $(OBJ)
 	ar -rcs $(NAME) $(OBJ)
-	@echo "$(COLOUR_GREEN)Compiled:$(COLOUR_END) $(NAME)"
+	@echo "$(COLOUR_GREEN)Compiled:$(COLOUR_END) $(BOLD)$@$(COLOUR_END)"
 
 clean:
 	rm -rf $(OBJ)

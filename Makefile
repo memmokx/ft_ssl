@@ -1,7 +1,7 @@
 NAME = ft_ssl
 CC = cc
 
-CFLAGS = -Wall -Wextra -std=c23 -fsanitize=address
+CFLAGS = -Wall -Wextra -std=c23 -fsanitize=address -fPIC
 
 INCLUDE = -Iinclude -Ilibft/include
 
@@ -9,30 +9,57 @@ FSSL_SRC = src/fssl/encoding.c src/fssl/hash.c src/fssl/md5.c
 CLI_SRC = src/cli/app.c src/cli/node.c
 MAIN_SRC = src/main.c src/digest.c
 
+TEST_SRC = tests/fssl/test_md5.c
+
+
+LIBFSSL_OBJ = $(FSSL_SRC:.c=.o)
+
 SRC = $(MAIN_SRC) $(CLI_SRC) $(FSSL_SRC)
 OBJ = $(SRC:.c=.o)
+TEST_OBJ = $(TEST_SRC:.c=.o)
 
+
+TESTS_BIN = tests/bin
 LIBFT = libft/libft.a
+LIBFSSL = libfssl.so
 
-COLOUR_GREEN=\033[0;32m
-COLOUR_GRAY=\033[0;90m
-COLOUR_RED=\033[0;31m
-COLOUR_BLUE=\033[0;34m
-COLOUR_END=\033[0m
+COLOUR_GREEN=$(shell tput setaf 2)
+COLOUR_GRAY=$(shell tput setaf 254)
+COLOUR_RED=$(shell tput setaf 1)
+COLOUR_BLUE=$(shell tput setaf 4)
+BOLD=$(shell tput bold)
+COLOUR_END=$(shell tput sgr0)
 
 ifdef OPT
 	CFLAGS += -O2 -flto
+endif
+
+ifdef DEBUG
+	CFLAGS += -g
 endif
 
 ifndef NO_SILENT
 .SILENT:
 endif
 
-all: $(NAME)
+all: $(NAME) lib
+
+lib: $(LIBFSSL)
+
+$(TESTS_BIN): $(TEST_OBJ) lib
+	$(CC) $(CFLAGS) $(TEST_OBJ) $(LIBFSSL) -o $@ -lcriterion -Wl,-rpath=$(PWD) $(INCLUDE)
+
+test: $(TESTS_BIN)
+	@echo "$(COLOUR_GREEN)Running unit tests$(COLOUR_END)"
+	./$(TESTS_BIN)
+
+$(LIBFSSL): $(LIBFSSL_OBJ) $(LIBFT)
+	$(CC) -shared $(CFLAGS) $(LIBFSSL_OBJ) $(LIBFT) -o $@ $(INCLUDE)
+	@echo "$(COLOUR_GREEN)Compiled:$(COLOUR_END) $(BOLD)$@$(COLOUR_END)"
 
 $(NAME): $(OBJ) $(LIBFT)
-	$(CC) $(CFLAGS) $(OBJ) $(LIBFT) $(MLX) -o $@ $(INCLUDE)
-	@echo "$(COLOUR_GREEN)Compiled:$(COLOUR_END) $(NAME)"
+	$(CC) $(CFLAGS) $(OBJ) $(LIBFT) -o $@ $(INCLUDE)
+	@echo "$(COLOUR_GREEN)Compiled:$(COLOUR_END) $(BOLD)$@$(COLOUR_END)"
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@ $(INCLUDE)
@@ -44,10 +71,15 @@ $(LIBFT):
 
 clean:
 	@rm -f $(OBJ)
+	@rm -f $(TEST_OBJ)
 	@make -C libft clean --no-print-directory
 
 fclean: clean
 	@rm -f $(NAME)
+	@rm -f $(LIBFSSL)
 	@rm -f $(LIBFT)
+	@rm -f $(TESTS_BIN)
 
 re : fclean all
+
+.PHONE: re all fclean clean lib test
