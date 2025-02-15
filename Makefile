@@ -38,6 +38,11 @@ ifdef DEBUG
 	CFLAGS += -g
 endif
 
+ifdef SANITIZE
+	CFLAGS += -g -fsanitize=address
+endif
+
+
 ifndef NO_SILENT
 .SILENT:
 endif
