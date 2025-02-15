@@ -152,5 +152,6 @@ Hasher fssl_md5_hasher(fssl_md5_ctx* ctx) {
       .instance = ctx,
       .write = (fssl_hasher_write_fn)fssl_md5_write,
       .finish = (fssl_hasher_finish_fn)fssl_md5_finish,
+      .reset = (fssl_hasher_reset_fn)fssl_md5_init,
   };
 }

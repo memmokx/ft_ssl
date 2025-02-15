@@ -26,7 +26,8 @@ static fssl_force_inline uint32_t rotr32(uint32_t a, uint32_t r) {
 #define ROTXORSHIFT(p, __a, __b, __c) \
   (rotr32((p), __a) ^ rotr32((p), __b) ^ ((p) >> __c))
 
-static fssl_force_inline void fssl_sha256_block(fssl_sha256_ctx* ctx, const uint8_t* block) {
+static fssl_force_inline void fssl_sha256_block(fssl_sha256_ctx* ctx,
+                                                const uint8_t* block) {
   uint32_t a, b, c, d, e, f, g, h;
   uint32_t w[64];
   size_t i = 0;
@@ -178,5 +179,6 @@ Hasher fssl_sha256_hasher(fssl_sha256_ctx* ctx) {
       .instance = ctx,
       .write = (fssl_hasher_write_fn)fssl_sha256_write,
       .finish = (fssl_hasher_finish_fn)fssl_sha256_finish,
+      .reset = (fssl_hasher_reset_fn)fssl_sha256_init,
   };
 }
