@@ -2,7 +2,7 @@
 
 ## Dependencies
 
-- Clang >=18
+- A C compiler that supports C23 
 - **Optional**: Criterion
 
 ## Building

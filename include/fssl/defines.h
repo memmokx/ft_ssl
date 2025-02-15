@@ -13,6 +13,22 @@
   (p)[1] = ((n) >> 8) & 0xff;   \
   (p)[0] = (n) & 0xff;
 
+#define fssl_be_write_u64(p, n) \
+  (p)[0] = ((n) >> 56) & 0xff;  \
+  (p)[1] = ((n) >> 48) & 0xff;  \
+  (p)[2] = ((n) >> 40) & 0xff;  \
+  (p)[3] = ((n) >> 32) & 0xff;  \
+  (p)[4] = ((n) >> 24) & 0xff;  \
+  (p)[5] = ((n) >> 16) & 0xff;  \
+  (p)[6] = ((n) >> 8) & 0xff;   \
+  (p)[7] = (n) & 0xff;
+
+#define fssl_be_write_u32(p, n) \
+  (p)[0] = ((n) >> 24) & 0xff;  \
+  (p)[1] = ((n) >> 16) & 0xff;  \
+  (p)[2] = ((n) >> 8) & 0xff;   \
+  (p)[3] = (n) & 0xff;
+
 #define fssl_le_write_u32(p, n) \
   (p)[3] = ((n) >> 24) & 0xff;  \
   (p)[2] = ((n) >> 16) & 0xff;  \
@@ -22,5 +38,9 @@
 #define fssl_le_read_u32(p)                                                  \
   ((uint32_t)((p)[0]) | (uint32_t)((p)[1] << 8) | (uint32_t)((p)[2] << 16) | \
    (uint32_t)((p)[3] << 24))
+
+#define fssl_be_read_u32(p)                                                  \
+  ((uint32_t)((p)[3]) | (uint32_t)((p)[2] << 8) | (uint32_t)((p)[1] << 16) | \
+   (uint32_t)((p)[0] << 24))
 
 #endif

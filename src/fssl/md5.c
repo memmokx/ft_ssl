@@ -23,11 +23,11 @@ constexpr uint32_t k[] = {
     0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391,
 };
 
-fssl_force_inline uint32_t rotl32(uint32_t a, uint32_t r) {
+static fssl_force_inline uint32_t rotl32(uint32_t a, uint32_t r) {
   return (a << r) | (a >> (32 - r));
 }
 
-fssl_force_inline void fssl_md5_block(fssl_md5_ctx* ctx, const uint8_t* block) {
+static fssl_force_inline void fssl_md5_block(fssl_md5_ctx* ctx, const uint8_t* block) {
   constexpr size_t md5_block_words = FSSL_MD5_BLOCK_SIZE / 4;
 
   uint32_t a = ctx->state[0];
@@ -106,14 +106,13 @@ void fssl_md5_write(fssl_md5_ctx* ctx, const uint8_t* data, size_t len) {
     assert(ctx->buffer_len == 0);
 
     const size_t blocks = len / FSSL_MD5_BLOCK_SIZE;
-    const size_t blocks_rem = len % FSSL_MD5_BLOCK_SIZE;
 
     for (size_t i = 0; i < blocks; ++i) {
       fssl_md5_block(ctx, data + (i * FSSL_MD5_BLOCK_SIZE));
     }
 
     data += blocks * FSSL_MD5_BLOCK_SIZE;
-    len = blocks_rem;
+    len %= FSSL_MD5_BLOCK_SIZE;
   }
 
   if (len != 0) {
@@ -122,7 +121,7 @@ void fssl_md5_write(fssl_md5_ctx* ctx, const uint8_t* data, size_t len) {
   }
 }
 
-bool fssl_md5_finish(fssl_md5_ctx* ctx, uint8_t* buf, size_t buf_capacity) {
+bool fssl_md5_finish(fssl_md5_ctx* ctx, uint8_t* buf, size_t buf_capacity, size_t *written) {
   const size_t padding = (56 - (1 + ctx->size)) % 64;
   const uint64_t len = ctx->size * 8;
   // 1 for the single end-bit.
@@ -141,6 +140,9 @@ bool fssl_md5_finish(fssl_md5_ctx* ctx, uint8_t* buf, size_t buf_capacity) {
   fssl_le_write_u32(buf + 4, ctx->state[1]);
   fssl_le_write_u32(buf + 8, ctx->state[2]);
   fssl_le_write_u32(buf + 12, ctx->state[3]);
+
+  if (written != nullptr)
+    *written = FSSL_MD5_SUM_SIZE;
 
   return true;
 }

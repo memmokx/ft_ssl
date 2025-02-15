@@ -1,15 +1,15 @@
 NAME = ft_ssl
 CC = cc
 
-CFLAGS = -Wall -Wextra -std=c23 -fsanitize=address -fPIC
+CFLAGS = -Wall -Wextra -std=c23 -fPIC
 
 INCLUDE = -Iinclude -Ilibft/include
 
-FSSL_SRC = src/fssl/encoding.c src/fssl/hash.c src/fssl/md5.c
+FSSL_SRC = src/fssl/encoding.c src/fssl/hash.c src/fssl/md5.c src/fssl/sha256.c
 CLI_SRC = src/cli/app.c src/cli/node.c
 MAIN_SRC = src/main.c src/digest.c
 
-TEST_SRC = tests/fssl/test_md5.c
+TEST_SRC = tests/fssl/test_md5.c tests/fssl/test_sha256.c
 
 
 LIBFSSL_OBJ = $(FSSL_SRC:.c=.o)
@@ -31,7 +31,7 @@ BOLD=$(shell tput bold)
 COLOUR_END=$(shell tput sgr0)
 
 ifdef OPT
-	CFLAGS += -O2 -flto
+	CFLAGS += -O3 -flto
 endif
 
 ifdef DEBUG

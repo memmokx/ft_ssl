@@ -7,7 +7,7 @@
 #include <sys/types.h>
 
 typedef void (*fssl_hasher_write_fn)(void*, const uint8_t*, size_t);
-typedef bool (*fssl_hasher_finish_fn)(void*, uint8_t*, size_t);
+typedef bool (*fssl_hasher_finish_fn)(void*, uint8_t*, size_t, size_t*);
 
 typedef struct {
   void* instance;
@@ -16,6 +16,6 @@ typedef struct {
 } Hasher;
 
 void fssl_hasher_write(Hasher* hasher, const uint8_t* data, size_t len);
-bool fssl_hasher_finish(Hasher* hasher, uint8_t* buf, size_t buf_capacity);
+bool fssl_hasher_finish(Hasher* hasher, uint8_t* buf, size_t buf_capacity, size_t* written);
 
 #endif

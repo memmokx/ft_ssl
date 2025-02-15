@@ -8,7 +8,7 @@ char* md5_hash_string_to_hex(const char* str) {
   fssl_md5_ctx ctx;
   fssl_md5_init(&ctx);
   fssl_md5_write(&ctx, (uint8_t*)str, strlen(str));
-  fssl_md5_finish(&ctx, output, sizeof(output));
+  fssl_md5_finish(&ctx, output, sizeof(output), nullptr);
   fssl_hex_encode(output, FSSL_MD5_SUM_SIZE, hex_output, sizeof(hex_output));
 
   return strdup(hex_output);
@@ -21,7 +21,7 @@ char *md5_hash_to_hex(uint8_t *data, size_t len) {
   fssl_md5_ctx ctx;
   fssl_md5_init(&ctx);
   fssl_md5_write(&ctx, data, len);
-  fssl_md5_finish(&ctx, output, sizeof(output));
+  fssl_md5_finish(&ctx, output, sizeof(output), nullptr);
   fssl_hex_encode(output, FSSL_MD5_SUM_SIZE, hex_output, sizeof(hex_output));
 
   return strdup(hex_output);
