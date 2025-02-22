@@ -10,7 +10,6 @@ typedef struct {
   uint32_t state[8];
   uint8_t buffer[64];
   uint32_t t[2];
-  uint64_t size;
   uint8_t buffer_len;
   bool last;
 } fssl_blake2_ctx;
