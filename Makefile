@@ -87,4 +87,4 @@ fclean: clean
 
 re : fclean all
 
-.PHONE: re all fclean clean lib test
+.PHONY: re all fclean clean lib test

@@ -67,12 +67,10 @@ COLOUR_END=$(shell tput sgr0)
 ifdef DEBUG
 	CFLAGS = -Wall -Wextra -g
 endif
-ifdef CHECK
-	CFLAGS += -fsanitize=address
+ifdef SANITIZE
+	CFLAGS += -g -fsanitize=address
 endif
-ifdef FAST
-	CFLAGS = -Wall -Werror -Wextra -Ofast
-endif
+
 
 ifndef NO_SILENT
 .SILENT:
