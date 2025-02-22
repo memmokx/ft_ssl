@@ -18,6 +18,15 @@ static const cli_command_t sha256_cmd = CLI_COMMAND("sha256",
                                                     CLI_FLAG('r', Set),
                                                     CLI_FLAG('s', String));
 
+#if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
+static const cli_command_t blake2_cmd = CLI_COMMAND("blake2",
+                                                    digest_command_impl,
+                                                    CLI_FLAG('p', Set),
+                                                    CLI_FLAG('q', Set),
+                                                    CLI_FLAG('r', Set),
+                                                    CLI_FLAG('s', String));
+#endif
+
 static int cli_interactive_mode(App* app) {
   int exit_code = 0;
   char** argv = nullptr;
@@ -74,6 +83,9 @@ int main(int argc, char** argv) {
     goto out;
 
 #if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
+  if (!cli_app_register_command(&ft_ssl, &blake2_cmd))
+    goto out;
+
   // Interactive mode
   if (argc == 1) {
     exit_code = cli_interactive_mode(&ft_ssl);

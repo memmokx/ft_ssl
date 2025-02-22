@@ -7,6 +7,7 @@
 
 constexpr string md5_command_name = libft_static_string("md5");
 constexpr string sha256_command_name = libft_static_string("sha256");
+constexpr string blake2_command_name = libft_static_string("blake2");
 
 static Hasher create_hasher(const string* command) {
   Hasher hasher = {};
@@ -25,6 +26,14 @@ static Hasher create_hasher(const string* command) {
       return hasher;
     fssl_sha256_init(ctx);
     return fssl_sha256_hasher(ctx);
+  }
+
+  if (string_equal(command, &blake2_command_name)) {
+    fssl_blake2_ctx * ctx = ft_calloc(1, sizeof(fssl_blake2_ctx));
+    if (ctx == nullptr)
+      return hasher;
+    fssl_blake2_init(ctx);
+    return fssl_blake2_hasher(ctx);
   }
 
   return hasher;
@@ -87,7 +96,7 @@ out:
 }
 
 static bool digest_hash_stdin(Hasher* hasher, string command, digest_flags_t flags) {
-  uint8_t buffer[8192];
+  uint8_t buffer[8192 * 2];
   string storage = string_new_capacity(128);
 
   while (true) {
