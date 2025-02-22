@@ -7,11 +7,11 @@ FSSL_CLI_FEATURES = 0
 
 INCLUDE = -Iinclude -Ilibft/include
 
-FSSL_SRC = src/fssl/encoding.c src/fssl/hash.c src/fssl/md5.c src/fssl/sha256.c
+FSSL_SRC = src/fssl/encoding.c src/fssl/hash.c src/fssl/md5.c src/fssl/sha256.c src/fssl/blake2s.c
 CLI_SRC = src/cli/app.c src/cli/node.c
 MAIN_SRC = src/main.c src/digest.c
 
-TEST_SRC = tests/fssl/test_md5.c tests/fssl/test_sha256.c
+TEST_SRC = tests/fssl/test_md5.c tests/fssl/test_sha256.c tests/fssl/test_blake2.c
 
 
 LIBFSSL_OBJ = $(FSSL_SRC:.c=.o)
