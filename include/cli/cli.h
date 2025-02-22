@@ -4,6 +4,13 @@
 #include <libft/string.h>
 #include <stdint.h>
 
+#ifndef FSSL_CLI_FEATURES
+# define FSSL_CLI_FEATURES 0
+#endif
+
+#define FSSL_MD5_VANILLA 0
+#define FSSL_MD5_BONUS 1
+
 constexpr size_t CLI_FLAGS_PER_COMMAND = 32;
 constexpr size_t CLI_FLAGS_MAX = 256;
 
@@ -74,6 +81,7 @@ typedef struct {
 
 App cli_app_init();
 void cli_app_deinit(App* app);
+void cli_app_reset_flags(App* app);
 bool cli_app_register_command(App* app, const cli_command_t* cmd);
 int cli_app_run(App* app, int argc, char** argv);
 

@@ -99,5 +99,5 @@ t_string						iterator_scalar_next(
 
 #define libft_static_string(str) (t_string){.ptr = str, .len = sizeof(str) - 1, .cap = sizeof(str)}
 typedef t_string string;
-
+typedef t_split string_split_result;
 #endif

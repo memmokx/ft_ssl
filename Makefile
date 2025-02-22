@@ -3,6 +3,8 @@ CC = cc
 
 CFLAGS = -Wall -Wextra -std=c23 -fPIC
 
+FSSL_CLI_FEATURES = 0
+
 INCLUDE = -Iinclude -Ilibft/include
 
 FSSL_SRC = src/fssl/encoding.c src/fssl/hash.c src/fssl/md5.c src/fssl/sha256.c
@@ -67,7 +69,7 @@ $(NAME): $(OBJ) $(LIBFT)
 	@echo "$(COLOUR_GREEN)Compiled:$(COLOUR_END) $(BOLD)$@$(COLOUR_END)"
 
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@ $(INCLUDE)
+	$(CC) $(CFLAGS) -D FSSL_CLI_FEATURES=$(FSSL_CLI_FEATURES) -c $< -o $@ $(INCLUDE)
 	@echo "$(COLOUR_BLUE)Compiled:$(COLOUR_END) $< $(COLOUR_GRAY)$(CC) $(CFLAGS)$(COLOUR_END)"
 
 $(LIBFT):
@@ -86,5 +88,8 @@ fclean: clean
 	@rm -f $(TESTS_BIN)
 
 re : fclean all
+
+bonus: FSSL_CLI_FEATURES=1
+bonus: $(NAME)
 
 .PHONY: re all fclean clean lib test

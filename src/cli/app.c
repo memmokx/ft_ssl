@@ -1,5 +1,6 @@
 #include <cli/cli.h>
 #include <libft/io.h>
+#include <libft/memory.h>
 #include <libft/string.h>
 #include <stdlib.h>
 
@@ -12,6 +13,10 @@ App cli_app_init() {
 
 void cli_app_deinit(App* app) {
   cmd_node_deinit(&app->cmd_head);
+}
+
+void cli_app_reset_flags(App* app) {
+  ft_bzero(&app->flags, sizeof(app->flags));
 }
 
 bool cli_app_register_command(App* app, const cli_command_t* cmd) {
@@ -96,10 +101,6 @@ static int cli_run_command(App* app, const cli_command_t* cmd, int argc, char** 
 int cli_app_run(App* app, int argc, char** argv) {
   int exit_code = 0;
 
-  argc--;
-  argv++;
-
-  // TODO(bonus): Interactive mode ?
   if (argc == 0)
     goto out;
 
@@ -114,7 +115,6 @@ int cli_app_run(App* app, int argc, char** argv) {
   exit_code = cli_run_command(app, cmd, argc - 1, argv + 1);
 
 out:
-  cli_app_deinit(app);
   return exit_code;
 }
 
