@@ -36,7 +36,6 @@ static fssl_force_inline uint32_t rotr32(uint32_t a, uint32_t r) {
     v[b] = rotr32(v[b] ^ v[c], 7);  \
   }
 
-#include "stdio.h"
 static fssl_force_inline void fssl_blake2_block(fssl_blake2_ctx* ctx,
                                                 const uint8_t* block) {
   uint32_t v[16] = {
@@ -112,7 +111,9 @@ void fssl_blake2_write(fssl_blake2_ctx* ctx, const uint8_t* data, size_t len) {
   if (len > FSSL_BLAKE2_BLOCK_SIZE) {
     assert(ctx->buffer_len == 0);
 
-    const size_t blocks = len / FSSL_BLAKE2_BLOCK_SIZE;
+    const int multiple = (len % FSSL_BLAKE2_BLOCK_SIZE == 0);
+    // If the len is a multiple of BLOCK_SIZE, we skip the last block.
+    const size_t blocks = (len / FSSL_BLAKE2_BLOCK_SIZE) - multiple;
 
     for (size_t i = 0; i < blocks; ++i) {
       ctx->t += FSSL_BLAKE2_BLOCK_SIZE;
@@ -121,6 +122,8 @@ void fssl_blake2_write(fssl_blake2_ctx* ctx, const uint8_t* data, size_t len) {
 
     data += blocks * FSSL_BLAKE2_BLOCK_SIZE;
     len %= FSSL_BLAKE2_BLOCK_SIZE;
+    len += FSSL_BLAKE2_BLOCK_SIZE *
+           multiple;  // The remaining block in case the len was indeed a multiple of BLOCK_SIZE
   }
 
   if (len != 0) {

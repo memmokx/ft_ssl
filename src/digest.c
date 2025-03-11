@@ -84,7 +84,7 @@ static void digest_print_hash(Hasher* hasher,
 next:
   ft_putstr(hash.ptr);
 
-  if (flags.reverse && !flags.redirect && data.ptr) {
+  if (flags.reverse && !flags.redirect && data.ptr && !flags.quiet) {
     ft_printf(flags.file ? " %s" : " \"%s\"", data.ptr);
   }
 
