@@ -34,7 +34,8 @@ int	printf_convert_float(t_string *buffer, double f)
 
 int	printf_convert_float_hex(t_string *buffer, double f)
 {
-	const uint64_t	cast = *(uint64_t*)&f;
+	const void *c = &f;
+        const uint64_t	cast = *(uint64_t*)c;
 	t_string		tmp;
 
 	tmp = ft_utoa_base(cast, HEX_BASE, 16);

@@ -33,6 +33,6 @@ static uint64_t	atoi_hex(const char *str)
 double	hex_float_to_d(const char *str)
 {
 	const uint64_t	cast = atoi_hex(str);
-
-	return (*(double *)&cast);
+        const void      *c = &cast;
+	return (*(double *)c);
 }

@@ -24,7 +24,7 @@ static fssl_force_inline uint32_t rotr32(uint32_t a, uint32_t r) {
   return (a >> r) | (a << (32 - r));
 }
 
-#define G(a, b, c, d, x, y)     \
+#define G(a, b, c, d, x, y)         \
   {                                 \
     v[a] = v[a] + v[b] + x;         \
     v[d] = rotr32(v[d] ^ v[a], 16); \
@@ -36,6 +36,7 @@ static fssl_force_inline uint32_t rotr32(uint32_t a, uint32_t r) {
     v[b] = rotr32(v[b] ^ v[c], 7);  \
   }
 
+#include "stdio.h"
 static fssl_force_inline void fssl_blake2_block(fssl_blake2_ctx* ctx,
                                                 const uint8_t* block) {
   uint32_t v[16] = {
@@ -49,8 +50,8 @@ static fssl_force_inline void fssl_blake2_block(fssl_blake2_ctx* ctx,
   for (size_t i = 0; i < 16; ++i)
     m[i] = fssl_le_read_u32((uint8_t*)(block + (i * 4)));
 
-  v[12] ^= ctx->t[0];
-  v[13] ^= ctx->t[1];
+  v[12] ^= (uint32_t)(ctx->t & UINT32_MAX);  // low
+  v[13] ^= (uint32_t)(ctx->t >> 32);         // high
   if (ctx->last)
     v[14] = ~v[14];
 
@@ -78,8 +79,17 @@ void fssl_blake2_init(fssl_blake2_ctx* ctx) {
 }
 
 void fssl_blake2_write(fssl_blake2_ctx* ctx, const uint8_t* data, size_t len) {
-  // There's some data left in the buffer, try to fill it first.
-  if (ctx->buffer_len != 0) {
+  // This function does not compress the possible last block, the _finish function will take care of it,
+  // not doing so would cause problems when writing blocks that are a multiple of the block size.
+
+  // If the buffer is full, flush it
+  if (ctx->buffer_len == FSSL_BLAKE2_BLOCK_SIZE) {
+    ctx->t += ctx->buffer_len;
+    fssl_blake2_block(ctx, ctx->buffer);
+    ctx->buffer_len = 0;
+  }
+
+  if (ctx->buffer_len < FSSL_BLAKE2_BLOCK_SIZE) {
     const size_t free = FSSL_BLAKE2_BLOCK_SIZE - ctx->buffer_len;
     const size_t min = (len < free) ? len : free;
 
@@ -90,25 +100,22 @@ void fssl_blake2_write(fssl_blake2_ctx* ctx, const uint8_t* data, size_t len) {
     data += min;
   }
 
-  // If the buffer was filled process it.
-  if (ctx->buffer_len == FSSL_BLAKE2_BLOCK_SIZE) {
-    ctx->t[0] += ctx->buffer_len;
-    if (ctx->t[0] < ctx->buffer_len)
-      ctx->t[1]++;
+  // If the buffer was filled process it. But only if we're sure that there's data
+  // coming after.
+  if (ctx->buffer_len == FSSL_BLAKE2_BLOCK_SIZE && len > 0) {
+    ctx->t += ctx->buffer_len;
     fssl_blake2_block(ctx, ctx->buffer);
     ctx->buffer_len = 0;
   }
 
   // When we enter this path the previous buffer has been processed.
-  if (len >= FSSL_BLAKE2_BLOCK_SIZE) {
+  if (len > FSSL_BLAKE2_BLOCK_SIZE) {
     assert(ctx->buffer_len == 0);
 
     const size_t blocks = len / FSSL_BLAKE2_BLOCK_SIZE;
 
     for (size_t i = 0; i < blocks; ++i) {
-      ctx->t[0] += FSSL_BLAKE2_BLOCK_SIZE;
-      if (ctx->t[0] < FSSL_BLAKE2_BLOCK_SIZE)
-        ctx->t[1]++;
+      ctx->t += FSSL_BLAKE2_BLOCK_SIZE;
       fssl_blake2_block(ctx, data + (i * FSSL_BLAKE2_BLOCK_SIZE));
     }
 
@@ -129,9 +136,7 @@ bool fssl_blake2_finish(fssl_blake2_ctx* ctx,
   if (buf_capacity < FSSL_BLAKE2_SUM_SIZE)
     return false;
 
-  ctx->t[0] += ctx->buffer_len;
-  if (ctx->t[0] < ctx->buffer_len)
-    ctx->t[1]++;
+  ctx->t += ctx->buffer_len;
   while (ctx->buffer_len < FSSL_BLAKE2_BLOCK_SIZE)
     ctx->buffer[ctx->buffer_len++] = 0;
 
@@ -154,7 +159,7 @@ bool fssl_blake2_finish(fssl_blake2_ctx* ctx,
   return true;
 }
 
-Hasher fssl_blake2_hasher(fssl_blake2_ctx * ctx) {
+Hasher fssl_blake2_hasher(fssl_blake2_ctx* ctx) {
   return (Hasher){
       .instance = ctx,
       .write = (fssl_hasher_write_fn)fssl_blake2_write,

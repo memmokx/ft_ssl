@@ -64,8 +64,11 @@ COLOUR_BLUE=$(shell tput setaf 4)
 BOLD=$(shell tput bold)
 COLOUR_END=$(shell tput sgr0)
 
+ifdef OPT
+	CFLAGS += -O3
+endif
 ifdef DEBUG
-	CFLAGS = -Wall -Wextra -g
+	CFLAGS += -g
 endif
 ifdef SANITIZE
 	CFLAGS += -g -fsanitize=address

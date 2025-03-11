@@ -135,7 +135,7 @@ static bool digest_hash_file(Hasher* hasher,
                              string command,
                              const char* path,
                              digest_flags_t flags) {
-  uint8_t buffer[8182];
+  uint8_t buffer[8182 * 2];
   int fd = open(path, O_RDONLY);
   if (fd < 0) {
     ft_fprintf(STDERR_FILENO, "ft_ssl: %s: %s: Unable to open file.\n", command.ptr,
