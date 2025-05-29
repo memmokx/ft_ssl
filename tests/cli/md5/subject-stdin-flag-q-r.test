@@ -1,0 +1,3 @@
+# RUN: echo "Pity the living." | ft_ssl md5 -q -r | filecheck %s 
+
+# CHECK: e20c3b973f63482a778f3fd1869b7f25

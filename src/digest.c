@@ -77,7 +77,7 @@ static void digest_print_hash(Hasher* hasher,
   if (data.ptr == nullptr)
     goto next;
 
-  if (!flags.reverse && !flags.redirect) {
+  if (!flags.reverse && !flags.redirect && !flags.quiet) {
     ft_printf(flags.file ? "%s (%s) = " : "%s (\"%s\") = ", command_upper.ptr, data.ptr);
   }
 

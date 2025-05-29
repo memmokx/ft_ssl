@@ -1,0 +1,7 @@
+# RUN: echo "And above all," > %t
+# RUN: echo "just to be extra clear" | ft_ssl md5 -r -q -p -s "foo" %t | filecheck %s 
+
+# CHECK: just to be extra clear
+# CHECK: 3ba35f1ea0d170cb3b9a752e3360286c
+# CHECK: acbd18db4cc2f85cedef654fccc4a4d8
+# CHECK: 53d53ea94217b259c11a5a2d104ec58a

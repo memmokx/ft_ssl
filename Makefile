@@ -60,6 +60,9 @@ test: $(TESTS_BIN)
 	@echo "$(COLOUR_GREEN)Running unit tests$(COLOUR_END)"
 	./$(TESTS_BIN)
 
+lit-test:
+	@litcheck lit run -v --path="$(PWD)" tests/cli/*
+
 $(LIBFSSL): $(LIBFSSL_OBJ) $(LIBFT)
 	$(CC) -shared $(CFLAGS) $(LIBFSSL_OBJ) $(LIBFT) -o $@ $(INCLUDE)
 	@echo "$(COLOUR_GREEN)Compiled:$(COLOUR_END) $(BOLD)$@$(COLOUR_END)"

@@ -1,0 +1,8 @@
+# RUN: echo "And above all," > %t
+# RUN: echo "one more thing" | ft_ssl md5 -r -p -s "foo" %t -s "bar" 2>&1 | filecheck %s 
+
+# CHECK: ("one more thing")= a0bd1876c6f011dd50fae52827f445f5
+# CHECK: acbd18db4cc2f85cedef654fccc4a4d8 "foo"
+# CHECK: 53d53ea94217b259c11a5a2d104ec58a {{.*}}
+# CHECK: ft_ssl: md5: -s: Unable to open file.
+# CHECK: ft_ssl: md5: bar: Unable to open file.
