@@ -139,10 +139,7 @@ void fssl_sha256_write(fssl_sha256_ctx* ctx, const uint8_t* data, size_t len) {
   }
 }
 
-bool fssl_sha256_finish(fssl_sha256_ctx* ctx,
-                        uint8_t* buf,
-                        size_t buf_capacity,
-                        size_t* written) {
+bool fssl_sha256_finish(fssl_sha256_ctx* ctx, uint8_t* buf, size_t buf_capacity) {
   const size_t padding = (56 - (1 + ctx->size)) % 64;
   const uint64_t len = ctx->size * 8;
   // 1 for the single end-bit.
@@ -168,17 +165,13 @@ bool fssl_sha256_finish(fssl_sha256_ctx* ctx,
   fssl_be_write_u32(buf + 24, ctx->state[6]);
   fssl_be_write_u32(buf + 28, ctx->state[7]);
 
-  if (written != nullptr)
-    *written = FSSL_SHA256_SUM_SIZE;
-
   return true;
 }
 
-Hasher fssl_sha256_hasher(fssl_sha256_ctx* ctx) {
-  return (Hasher){
-      .instance = ctx,
-      .write = (fssl_hasher_write_fn)fssl_sha256_write,
-      .finish = (fssl_hasher_finish_fn)fssl_sha256_finish,
-      .reset = (fssl_hasher_reset_fn)fssl_sha256_init,
-  };
-}
+const fssl_hash_t fssl_hash_sha256 = {
+    .ctx_size = sizeof(fssl_sha256_ctx),
+    .sum_size = FSSL_SHA256_SUM_SIZE,
+    .write_fn = (fssl_hash_write_fn)fssl_sha256_write,
+    .finish_fn = (fssl_hash_finish_fn)fssl_sha256_finish,
+    .reset_fn = (fssl_hash_reset_fn)fssl_sha256_init,
+};

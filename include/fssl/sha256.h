@@ -14,12 +14,10 @@ typedef struct {
   uint8_t buffer_len;
 } fssl_sha256_ctx;
 
-Hasher fssl_sha256_hasher(fssl_sha256_ctx* ctx);
 void fssl_sha256_init(fssl_sha256_ctx* ctx);
 void fssl_sha256_write(fssl_sha256_ctx* ctx, const uint8_t* data, size_t len);
-bool fssl_sha256_finish(fssl_sha256_ctx* ctx,
-                        uint8_t* buf,
-                        size_t buf_capacity,
-                        size_t* written);
+bool fssl_sha256_finish(fssl_sha256_ctx* ctx, uint8_t* buf, size_t buf_capacity);
+
+extern const fssl_hash_t fssl_hash_sha256;
 
 #endif

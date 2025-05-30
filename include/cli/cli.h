@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #ifndef FSSL_CLI_FEATURES
-# define FSSL_CLI_FEATURES 0
+#define FSSL_CLI_FEATURES 0
 #endif
 
 #define FSSL_MD5_VANILLA 0
@@ -77,9 +77,10 @@ void cmd_node_deinit(cmd_node_t** head);
 typedef struct {
   cli_flags_t flags;
   cmd_node_t* cmd_head;
+  const char* usage;
 } App;
 
-App cli_app_init();
+App cli_app_init(const char* usage);
 void cli_app_deinit(App* app);
 void cli_app_reset_flags(App* app);
 bool cli_app_register_command(App* app, const cli_command_t* cmd);

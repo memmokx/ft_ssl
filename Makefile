@@ -44,7 +44,6 @@ ifdef SANITIZE
 	CFLAGS += -g -fsanitize=address
 endif
 
-
 ifndef NO_SILENT
 .SILENT:
 endif
@@ -60,7 +59,7 @@ test: $(TESTS_BIN)
 	@echo "$(COLOUR_GREEN)Running unit tests$(COLOUR_END)"
 	./$(TESTS_BIN)
 
-lit-test:
+lit-test: $(NAME)
 	@litcheck lit run -v --path="$(PWD)" tests/cli/*
 
 $(LIBFSSL): $(LIBFSSL_OBJ) $(LIBFT)

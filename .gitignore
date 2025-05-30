@@ -9,14 +9,12 @@
 !include/**
 
 !libft/
-!libft/**
-libft/**/*.o
-libft/**/*.a
+!libft/Makefile
+!libft/**/*.c
+!libft/**/*.h
 
 !src/
-!src/**
-src/**/*.o
-src/**/*.a
+!src/**/*.c
 
 !tests/
 !tests/**

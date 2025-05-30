@@ -132,10 +132,7 @@ void fssl_blake2_write(fssl_blake2_ctx* ctx, const uint8_t* data, size_t len) {
   }
 }
 
-bool fssl_blake2_finish(fssl_blake2_ctx* ctx,
-                        uint8_t* buf,
-                        size_t buf_capacity,
-                        size_t* written) {
+bool fssl_blake2_finish(fssl_blake2_ctx* ctx, uint8_t* buf, size_t buf_capacity) {
   if (buf_capacity < FSSL_BLAKE2_SUM_SIZE)
     return false;
 
@@ -156,17 +153,13 @@ bool fssl_blake2_finish(fssl_blake2_ctx* ctx,
   fssl_le_write_u32(buf + 24, ctx->state[6]);
   fssl_le_write_u32(buf + 28, ctx->state[7]);
 
-  if (written != nullptr)
-    *written = FSSL_BLAKE2_SUM_SIZE;
-
   return true;
 }
 
-Hasher fssl_blake2_hasher(fssl_blake2_ctx* ctx) {
-  return (Hasher){
-      .instance = ctx,
-      .write = (fssl_hasher_write_fn)fssl_blake2_write,
-      .finish = (fssl_hasher_finish_fn)fssl_blake2_finish,
-      .reset = (fssl_hasher_reset_fn)fssl_blake2_init,
-  };
-}
+const fssl_hash_t fssl_hash_blake2 = {
+    .ctx_size = sizeof(fssl_blake2_ctx),
+    .sum_size = FSSL_BLAKE2_SUM_SIZE,
+    .write_fn = (fssl_hash_write_fn)fssl_blake2_write,
+    .finish_fn = (fssl_hash_finish_fn)fssl_blake2_finish,
+    .reset_fn = (fssl_hash_reset_fn)fssl_blake2_init,
+};

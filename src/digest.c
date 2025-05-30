@@ -10,42 +10,24 @@ constexpr string sha256_command_name = libft_static_string("sha256");
 constexpr string blake2_command_name = libft_static_string("blake2");
 
 static Hasher create_hasher(const string* command) {
-  Hasher hasher = {};
+  if (string_equal(command, &md5_command_name))
+    return fssl_hasher_new(fssl_hash_md5);
 
-  if (string_equal(command, &md5_command_name)) {
-    fssl_md5_ctx* ctx = ft_calloc(1, sizeof(fssl_md5_ctx));
-    if (ctx == nullptr)
-      return hasher;
-    fssl_md5_init(ctx);
-    return fssl_md5_hasher(ctx);
-  }
+  if (string_equal(command, &sha256_command_name))
+    return fssl_hasher_new(fssl_hash_sha256);
 
-  if (string_equal(command, &sha256_command_name)) {
-    fssl_sha256_ctx* ctx = ft_calloc(1, sizeof(fssl_sha256_ctx));
-    if (ctx == nullptr)
-      return hasher;
-    fssl_sha256_init(ctx);
-    return fssl_sha256_hasher(ctx);
-  }
+  if (string_equal(command, &blake2_command_name))
+    return fssl_hasher_new(fssl_hash_blake2);
 
-  if (string_equal(command, &blake2_command_name)) {
-    fssl_blake2_ctx * ctx = ft_calloc(1, sizeof(fssl_blake2_ctx));
-    if (ctx == nullptr)
-      return hasher;
-    fssl_blake2_init(ctx);
-    return fssl_blake2_hasher(ctx);
-  }
-
-  return hasher;
+  return (Hasher){};
 }
 
 static string hasher_get_hash(Hasher* hasher) {
   uint8_t hash_output[64] = {};
   char hash_hex[129] = {};
-  size_t written = 0;
 
-  fssl_hasher_finish(hasher, hash_output, sizeof(hash_output), &written);
-  fssl_hex_encode(hash_output, written, hash_hex, sizeof(hash_hex));
+  fssl_hasher_finish(hasher, hash_output, sizeof(hash_output));
+  fssl_hex_encode(hash_output, hasher->hash.sum_size, hash_hex, sizeof(hash_hex));
   fssl_hasher_reset(hasher);
   return string_new(hash_hex);
 }
@@ -100,7 +82,7 @@ static bool digest_hash_stdin(Hasher* hasher, string command, digest_flags_t fla
   string storage = string_new_capacity(128);
 
   while (true) {
-    ssize_t n = read(STDIN_FILENO, buffer, sizeof(buffer) - 1);
+    const ssize_t n = read(STDIN_FILENO, buffer, sizeof(buffer) - 1);
     if (n < 1)
       break;
 
@@ -143,17 +125,26 @@ static bool digest_hash_file(Hasher* hasher,
     return false;
   }
 
+  ssize_t n = 0;
   while (true) {
-    ssize_t n = read(fd, buffer, sizeof(buffer));
+    n = read(fd, buffer, sizeof(buffer));
     if (n < 1)
       break;
 
     fssl_hasher_write(hasher, buffer, n);
   }
 
+  if (n == -1) {
+    ft_fprintf(STDERR_FILENO, "ft_ssl: %s: %s: Unable to read file\n", command.ptr,
+               path);
+    close(fd);
+    return false;
+  }
+
   flags.file = true;
   digest_print_hash(hasher, command, string_new_owned((char*)path), flags);
 
+  close(fd);
   return true;
 }
 
@@ -195,6 +186,6 @@ int digest_command_impl(string command, cli_flags_t* flags, int argc, char** arg
     exit_code |= !digest_hash_file(&hasher, command, argv[i], digest_flags);
   }
 
-  free(hasher.instance);
+  fssl_hasher_destroy(&hasher);
   return exit_code;
 }

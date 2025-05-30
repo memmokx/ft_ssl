@@ -8,7 +8,7 @@ char* blake2_hash_string_to_hex(const char* str) {
   fssl_blake2_ctx ctx;
   fssl_blake2_init(&ctx);
   fssl_blake2_write(&ctx, (uint8_t*)str, strlen(str));
-  fssl_blake2_finish(&ctx, output, sizeof(output), nullptr);
+  fssl_blake2_finish(&ctx, output, sizeof(output));
   fssl_hex_encode(output, FSSL_BLAKE2_SUM_SIZE, hex_output, sizeof(hex_output));
 
   return strdup(hex_output);
@@ -47,7 +47,8 @@ Test(fssl, blake2_test_vectors) {
       m62, "1109521feed362d8ac50e28784406e8b8577e9103f74c7dde7e7c5339a700e9f");
   cr_assert_str_eq(
       m128, "3ac477e27353f9019b81694afe60c8049403784f91a58288428ea318bfa82809");
-  cr_assert_str_eq(m127, "50424a14cfc0a3cdfcfafb0eed5b7731bfc401a05ccc93f16ed9757f1b7529f2");
+  cr_assert_str_eq(
+      m127, "50424a14cfc0a3cdfcfafb0eed5b7731bfc401a05ccc93f16ed9757f1b7529f2");
 
   free(m127);
   free(m62);

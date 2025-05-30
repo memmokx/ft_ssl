@@ -4,10 +4,11 @@
 #include <libft/string.h>
 #include <stdlib.h>
 
-App cli_app_init() {
+App cli_app_init(const char* usage) {
   return (App){
       .flags = {},
       .cmd_head = nullptr,
+      .usage = usage,
   };
 }
 
@@ -70,10 +71,11 @@ static cli_command_t* cli_get_command(App* app, string name) {
   return nullptr;
 }
 
-static int cli_run_command(App* app, const cli_command_t* cmd, int argc, char** argv) {
-  char flag;
-  cli_flag_type ty;
+static void cli_app_print_help(const App* app) {
+  ft_fprintf(STDOUT_FILENO, "%s", app->usage);
+}
 
+static int cli_run_command(App* app, const cli_command_t* cmd, int argc, char** argv) {
   int i = 0;
   for (; i < argc; ++i) {
     const string arg = string_new_owned(argv[i]);
@@ -84,8 +86,15 @@ static int cli_run_command(App* app, const cli_command_t* cmd, int argc, char** 
       if (arg.len != 2 || !cli_command_has_flag(cmd, arg.ptr[1]))
         break;
 
-      flag = arg.ptr[1];
-      ty = cli_command_flag_type(cmd, flag);
+      const char flag = arg.ptr[1];
+      const cli_flag_type ty = cli_command_flag_type(cmd, flag);
+      if (ty == FlagString && i + 1 >= argc) {
+        ft_fprintf(STDERR_FILENO,
+                   "ft_ssl: Error: the '-s' flag requires a string argument.\n");
+        cli_app_print_help(app);
+        return 1;
+      }
+
       app->flags.table[(size_t)flag] =
           cli_flag_from_arg(flag, ty, (ty == FlagString) ? argv[++i] : nullptr);
 
@@ -101,13 +110,16 @@ static int cli_run_command(App* app, const cli_command_t* cmd, int argc, char** 
 int cli_app_run(App* app, int argc, char** argv) {
   int exit_code = 0;
 
-  if (argc == 0)
+  if (argc == 0) {
+    ft_fprintf(STDERR_FILENO, "usage: ft_ssl command [flags] [file/string]\n");
     goto out;
+  }
 
   const string name = string_new_owned(argv[0]);
   const cli_command_t* cmd = cli_get_command(app, name);
   if (cmd == nullptr) {
-    ft_fprintf(STDERR_FILENO, "ft_ssl: Error: '%s' is an invalid command.", name.ptr);
+    ft_fprintf(STDERR_FILENO, "ft_ssl: Error: '%s' is an invalid command.\n", name.ptr);
+    cli_app_print_help(app);
     exit_code = 1;
     goto out;
   }

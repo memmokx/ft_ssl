@@ -14,9 +14,10 @@ typedef struct {
   uint8_t buffer_len;
 } fssl_md5_ctx;
 
-Hasher fssl_md5_hasher(fssl_md5_ctx* ctx);
 void fssl_md5_init(fssl_md5_ctx* ctx);
 void fssl_md5_write(fssl_md5_ctx* ctx, const uint8_t* data, size_t len);
-bool fssl_md5_finish(fssl_md5_ctx* ctx, uint8_t* buf, size_t buf_capacity, size_t* written);
+bool fssl_md5_finish(fssl_md5_ctx* ctx, uint8_t* buf, size_t buf_capacity);
+
+extern const fssl_hash_t fssl_hash_md5;
 
 #endif

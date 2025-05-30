@@ -14,12 +14,10 @@ typedef struct {
   bool last;
 } fssl_blake2_ctx;
 
-Hasher fssl_blake2_hasher(fssl_blake2_ctx* ctx);
 void fssl_blake2_init(fssl_blake2_ctx* ctx);
 void fssl_blake2_write(fssl_blake2_ctx* ctx, const uint8_t* data, size_t len);
-bool fssl_blake2_finish(fssl_blake2_ctx* ctx,
-                        uint8_t* buf,
-                        size_t buf_capacity,
-                        size_t* written);
+bool fssl_blake2_finish(fssl_blake2_ctx* ctx, uint8_t* buf, size_t buf_capacity);
+
+extern const fssl_hash_t fssl_hash_blake2;
 
 #endif

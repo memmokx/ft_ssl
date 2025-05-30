@@ -8,7 +8,7 @@ char* sha256_hash_string_to_hex(const char* str) {
   fssl_sha256_ctx ctx;
   fssl_sha256_init(&ctx);
   fssl_sha256_write(&ctx, (uint8_t*)str, strlen(str));
-  fssl_sha256_finish(&ctx, output, sizeof(output), nullptr);
+  fssl_sha256_finish(&ctx, output, sizeof(output));
   fssl_hex_encode(output, FSSL_SHA256_SUM_SIZE, hex_output, sizeof(hex_output));
 
   return strdup(hex_output);

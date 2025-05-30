@@ -1,6 +1,5 @@
 #include <cli/cli.h>
 #include <digest.h>
-#include <fssl/fssl.h>
 #include "libft/io.h"
 #include "libft/memory.h"
 
@@ -26,6 +25,16 @@ static const cli_command_t blake2_cmd = CLI_COMMAND("blake2",
                                                     CLI_FLAG('r', Set),
                                                     CLI_FLAG('s', String));
 #endif
+
+const char* fssl_cli_usage =
+    "\nCommands:\n"
+    "md5\n"
+    "sha256\n"
+#if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
+    "blake2\n"
+#endif
+    "\nFlags:\n"
+    "-p -q -r -s\n";
 
 static int cli_interactive_mode(App* app) {
   int exit_code = 0;
@@ -75,7 +84,7 @@ static int cli_interactive_mode(App* app) {
 
 int main(int argc, char** argv) {
   int exit_code = 1;
-  App ft_ssl = cli_app_init();
+  App ft_ssl = cli_app_init(fssl_cli_usage);
 
   if (!cli_app_register_command(&ft_ssl, &md5_cmd))
     goto out;

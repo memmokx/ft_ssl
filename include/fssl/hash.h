@@ -6,19 +6,27 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-typedef void (*fssl_hasher_write_fn)(void*, const uint8_t*, size_t);
-typedef bool (*fssl_hasher_finish_fn)(void*, uint8_t*, size_t, size_t*);
-typedef void (*fssl_hasher_reset_fn)(void*);
+typedef void (*fssl_hash_write_fn)(void*, const uint8_t*, size_t);
+typedef bool (*fssl_hash_finish_fn)(void*, uint8_t*, size_t);
+typedef void (*fssl_hash_reset_fn)(void*);
+
+typedef struct {
+  size_t ctx_size;
+  size_t sum_size;
+  fssl_hash_write_fn write_fn;
+  fssl_hash_finish_fn finish_fn;
+  fssl_hash_reset_fn reset_fn;
+} fssl_hash_t;
 
 typedef struct {
   void* instance;
-  fssl_hasher_write_fn write;
-  fssl_hasher_finish_fn finish;
-  fssl_hasher_reset_fn reset;
+  fssl_hash_t hash;
 } Hasher;
 
-void fssl_hasher_write(Hasher* hasher, const uint8_t* data, size_t len);
-bool fssl_hasher_finish(Hasher* hasher, uint8_t* buf, size_t buf_capacity, size_t* written);
-void fssl_hasher_reset(Hasher* hasher);
+Hasher fssl_hasher_new(fssl_hash_t hash);
+void fssl_hasher_write(const Hasher* hasher, const uint8_t* data, size_t len);
+bool fssl_hasher_finish(const Hasher* hasher, uint8_t* buf, size_t buf_capacity);
+void fssl_hasher_reset(const Hasher* hasher);
+void fssl_hasher_destroy(Hasher* hasher);
 
 #endif

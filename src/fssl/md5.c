@@ -121,7 +121,7 @@ void fssl_md5_write(fssl_md5_ctx* ctx, const uint8_t* data, size_t len) {
   }
 }
 
-bool fssl_md5_finish(fssl_md5_ctx* ctx, uint8_t* buf, size_t buf_capacity, size_t *written) {
+bool fssl_md5_finish(fssl_md5_ctx* ctx, uint8_t* buf, size_t buf_capacity) {
   const size_t padding = (56 - (1 + ctx->size)) % 64;
   const uint64_t len = ctx->size * 8;
   // 1 for the single end-bit.
@@ -141,17 +141,13 @@ bool fssl_md5_finish(fssl_md5_ctx* ctx, uint8_t* buf, size_t buf_capacity, size_
   fssl_le_write_u32(buf + 8, ctx->state[2]);
   fssl_le_write_u32(buf + 12, ctx->state[3]);
 
-  if (written != nullptr)
-    *written = FSSL_MD5_SUM_SIZE;
-
   return true;
 }
 
-Hasher fssl_md5_hasher(fssl_md5_ctx* ctx) {
-  return (Hasher){
-      .instance = ctx,
-      .write = (fssl_hasher_write_fn)fssl_md5_write,
-      .finish = (fssl_hasher_finish_fn)fssl_md5_finish,
-      .reset = (fssl_hasher_reset_fn)fssl_md5_init,
-  };
-}
+const fssl_hash_t fssl_hash_md5 = {
+    .ctx_size = sizeof(fssl_md5_ctx),
+    .sum_size = FSSL_MD5_SUM_SIZE,
+    .write_fn = (fssl_hash_write_fn)fssl_md5_write,
+    .finish_fn = (fssl_hash_finish_fn)fssl_md5_finish,
+    .reset_fn = (fssl_hash_reset_fn)fssl_md5_init,
+};
