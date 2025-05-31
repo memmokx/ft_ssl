@@ -65,7 +65,7 @@ BOLD=$(shell tput bold)
 COLOUR_END=$(shell tput sgr0)
 
 ifdef OPT
-	CFLAGS += -O3
+	CFLAGS += -march=native -O3 -flto
 endif
 ifdef DEBUG
 	CFLAGS += -g

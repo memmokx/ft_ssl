@@ -36,6 +36,7 @@ const char* fssl_cli_usage =
     "\nFlags:\n"
     "-p -q -r -s\n";
 
+#if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
 static int cli_interactive_mode(App* app) {
   int exit_code = 0;
   char** argv = nullptr;
@@ -81,6 +82,7 @@ static int cli_interactive_mode(App* app) {
 
   return exit_code;
 }
+#endif
 
 int main(int argc, char** argv) {
   int exit_code = 1;
