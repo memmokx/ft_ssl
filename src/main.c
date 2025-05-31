@@ -24,6 +24,14 @@ static const cli_command_t blake2_cmd = CLI_COMMAND("blake2",
                                                     CLI_FLAG('q', Set),
                                                     CLI_FLAG('r', Set),
                                                     CLI_FLAG('s', String));
+
+static const cli_command_t sha1_cmd = CLI_COMMAND("sha1",
+                                                  digest_command_impl,
+                                                  CLI_FLAG('p', Set),
+                                                  CLI_FLAG('q', Set),
+                                                  CLI_FLAG('r', Set),
+                                                  CLI_FLAG('s', String));
+
 #endif
 
 const char* fssl_cli_usage =
@@ -31,6 +39,7 @@ const char* fssl_cli_usage =
     "md5\n"
     "sha256\n"
 #if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
+    "sha1\n"
     "blake2\n"
 #endif
     "\nFlags:\n"
@@ -94,6 +103,8 @@ int main(int argc, char** argv) {
     goto out;
 
 #if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
+  if (!cli_app_register_command(&ft_ssl, &sha1_cmd))
+    goto out;
   if (!cli_app_register_command(&ft_ssl, &blake2_cmd))
     goto out;
 

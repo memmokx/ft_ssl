@@ -80,45 +80,7 @@ void fssl_md5_init(fssl_md5_ctx* ctx) {
 }
 
 void fssl_md5_write(fssl_md5_ctx* ctx, const uint8_t* data, size_t len) {
-  ctx->size += len;
-
-  // There's some data left in the buffer, try to fill it first.
-  if (ctx->buffer_len != 0) {
-    const size_t free = FSSL_MD5_BLOCK_SIZE - ctx->buffer_len;
-    const size_t min = (len < free) ? len : free;
-
-    ft_memcpy(ctx->buffer + ctx->buffer_len, data, min);
-    ctx->buffer_len += min;
-
-    len -= min;
-    data += min;
-  }
-
-  // If the buffer was filled process it.
-  if (ctx->buffer_len == FSSL_MD5_BLOCK_SIZE) {
-    fssl_md5_block(ctx, ctx->buffer);
-    ctx->buffer_len = 0;
-  }
-
-  // When we enter this path the previous buffer has been processed.
-  if (len >= FSSL_MD5_BLOCK_SIZE) {
-    // TODO(push): remove assert.
-    assert(ctx->buffer_len == 0);
-
-    const size_t blocks = len / FSSL_MD5_BLOCK_SIZE;
-
-    for (size_t i = 0; i < blocks; ++i) {
-      fssl_md5_block(ctx, data + (i * FSSL_MD5_BLOCK_SIZE));
-    }
-
-    data += blocks * FSSL_MD5_BLOCK_SIZE;
-    len %= FSSL_MD5_BLOCK_SIZE;
-  }
-
-  if (len != 0) {
-    ft_memcpy(ctx->buffer + ctx->buffer_len, data, len);
-    ctx->buffer_len += len;
-  }
+  fssl_digest_write(ctx, data, len, fssl_md5_block, FSSL_MD5_BLOCK_SIZE);
 }
 
 bool fssl_md5_finish(fssl_md5_ctx* ctx, uint8_t* buf, size_t buf_capacity) {

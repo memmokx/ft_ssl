@@ -17,6 +17,6 @@
 !src/**/*.c
 
 !tests/
-!tests/**
-tests/**/*.o
-tests/**/*.a
+!tests/**/*.c
+!tests/**/*.test
+!tests/**/*.toml

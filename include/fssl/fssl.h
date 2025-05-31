@@ -5,6 +5,6 @@
 #include "encoding.h"
 #include "hash.h"
 #include "md5.h"
-#include "sha256.h"
+#include "sha.h"
 
 #endif

@@ -7,6 +7,7 @@
 
 constexpr string md5_command_name = libft_static_string("md5");
 constexpr string sha256_command_name = libft_static_string("sha256");
+constexpr string sha1_command_name = libft_static_string("sha1");
 constexpr string blake2_command_name = libft_static_string("blake2");
 
 static Hasher create_hasher(const string* command) {
@@ -18,6 +19,9 @@ static Hasher create_hasher(const string* command) {
 
   if (string_equal(command, &blake2_command_name))
     return fssl_hasher_new(fssl_hash_blake2);
+
+  if (string_equal(command, &sha1_command_name))
+    return fssl_hasher_new(fssl_hash_sha1);
 
   return (Hasher){};
 }

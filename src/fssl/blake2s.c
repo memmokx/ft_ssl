@@ -25,7 +25,7 @@ static fssl_force_inline uint32_t rotr32(uint32_t a, uint32_t r) {
 }
 
 #define G(a, b, c, d, x, y)         \
-  {                                 \
+  do {                              \
     v[a] = v[a] + v[b] + x;         \
     v[d] = rotr32(v[d] ^ v[a], 16); \
     v[c] = v[c] + v[d];             \
@@ -34,7 +34,7 @@ static fssl_force_inline uint32_t rotr32(uint32_t a, uint32_t r) {
     v[d] = rotr32(v[d] ^ v[a], 8);  \
     v[c] = v[c] + v[d];             \
     v[b] = rotr32(v[b] ^ v[c], 7);  \
-  }
+  } while (false)
 
 static fssl_force_inline void fssl_blake2_block(fssl_blake2_ctx* ctx,
                                                 const uint8_t* block) {
