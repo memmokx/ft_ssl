@@ -1,7 +1,7 @@
 NAME = ft_ssl
 CC = cc
 
-CFLAGS = -Wall -Wextra -std=c23 -fPIC
+CFLAGS = -Wall -Wextra -Werror -std=c23 -fPIC
 
 FSSL_CLI_FEATURES = 0
 
