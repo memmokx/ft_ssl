@@ -5,27 +5,6 @@
 #include <libft/io.h>
 #include <libft/memory.h>
 
-constexpr string md5_command_name = libft_static_string("md5");
-constexpr string sha256_command_name = libft_static_string("sha256");
-constexpr string sha1_command_name = libft_static_string("sha1");
-constexpr string blake2_command_name = libft_static_string("blake2");
-
-static Hasher create_hasher(const string* command) {
-  if (string_equal(command, &md5_command_name))
-    return fssl_hasher_new(fssl_hash_md5);
-
-  if (string_equal(command, &sha256_command_name))
-    return fssl_hasher_new(fssl_hash_sha256);
-
-  if (string_equal(command, &blake2_command_name))
-    return fssl_hasher_new(fssl_hash_blake2);
-
-  if (string_equal(command, &sha1_command_name))
-    return fssl_hasher_new(fssl_hash_sha1);
-
-  return (Hasher){};
-}
-
 static string hasher_get_hash(Hasher* hasher) {
   uint8_t hash_output[64] = {};
   char hash_hex[129] = {};
@@ -160,10 +139,14 @@ static void digest_hash_string(Hasher* hasher,
   digest_print_hash(hasher, command, str, flags);
 }
 
-int digest_command_impl(string command, cli_flags_t* flags, int argc, char** argv) {
+int digest_command_impl(string command,
+                        const cli_command_data* data,
+                        cli_flags_t* flags,
+                        int argc,
+                        char** argv) {
   int exit_code = 0;
 
-  Hasher hasher = create_hasher(&command);
+  Hasher hasher = fssl_hasher_new(data->hash);
   if (hasher.instance == nullptr)
     return 1;
 

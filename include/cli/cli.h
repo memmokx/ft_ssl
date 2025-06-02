@@ -1,6 +1,7 @@
 #ifndef CLI_H
 #define CLI_H
 
+#include <fssl/fssl.h>
 #include <libft/string.h>
 #include <stdint.h>
 
@@ -43,11 +44,17 @@ typedef struct {
 
 cli_flag_t* cli_flags_get(cli_flags_t* flags, char flag);
 
-typedef int (*cli_command_action)(string, cli_flags_t*, int, char**);
+typedef union {
+  fssl_hash_t hash;
+} cli_command_data;
+
+typedef int (
+    *cli_command_action)(string, const cli_command_data*, cli_flags_t*, int, char**);
 
 typedef struct {
   string name;
   cli_command_action action;
+  cli_command_data data;
   // Maximum of 32 flags per command, should be plenty.
   struct {
     cli_flag_type ty;
@@ -57,11 +64,11 @@ typedef struct {
 
 #define CLI_HAS_FLAG(flags, flag) (flags[(size_t)flag].type != FlagNone)
 #define CLI_FLAG(name, ty) {Flag##ty, name}
-#define CLI_COMMAND(name, action, ...)   \
-  (cli_command_t) {                      \
-    libft_static_string(name), action, { \
-      __VA_ARGS__                        \
-    }                                    \
+#define CLI_COMMAND(name, action, data, ...)   \
+  (cli_command_t) {                            \
+    libft_static_string(name), action, data, { \
+      __VA_ARGS__                              \
+    }                                          \
   }
 
 typedef struct cmd_node_s {
@@ -76,14 +83,13 @@ void cmd_node_deinit(cmd_node_t** head);
 
 typedef struct {
   cli_flags_t flags;
-  cmd_node_t* cmd_head;
   const char* usage;
 } App;
 
 App cli_app_init(const char* usage);
 void cli_app_deinit(App* app);
 void cli_app_reset_flags(App* app);
-bool cli_app_register_command(App* app, const cli_command_t* cmd);
+bool cli_register_command(const cli_command_t cmd);
 int cli_app_run(App* app, int argc, char** argv);
 
 #endif
