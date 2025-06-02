@@ -82,9 +82,11 @@ static int cli_run_command(App* app, const cli_command_t* cmd, int argc, char** 
     const bool has_prefix = string_index_of(arg, '-') == 0;
 
     if (has_prefix) {
-      // TODO: correct behaviour when the flag is invalid ?
-      if (arg.len != 2 || !cli_command_has_flag(cmd, arg.ptr[1]))
-        break;
+      if (arg.len != 2 || !cli_command_has_flag(cmd, arg.ptr[1])) {
+        ft_fprintf(STDERR_FILENO, "ft_ssl: Error: '%s' is not a valid flag.\n", arg.ptr);
+        cli_app_print_help(app);
+        return 1;
+      }
 
       const char flag = arg.ptr[1];
       const cli_flag_type ty = cli_command_flag_type(cmd, flag);
