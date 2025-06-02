@@ -48,7 +48,7 @@ ifndef NO_SILENT
 .SILENT:
 endif
 
-all: $(NAME) lib
+all: $(NAME)
 
 lib: $(LIBFSSL)
 
