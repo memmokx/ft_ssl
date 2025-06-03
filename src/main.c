@@ -6,28 +6,64 @@
 uint8_t g_failed = 0;
 
 __attribute__((constructor)) static void register_md5_cmd() {
-  g_failed |= cli_register_command(CLI_COMMAND(
-      "md5", digest_command_impl, {.hash = fssl_hash_md5}, CLI_FLAG('p', Set),
-      CLI_FLAG('q', Set), CLI_FLAG('r', Set), CLI_FLAG('s', String)));
+  g_failed |= !cli_register_command((cli_command_t){
+      .name = libft_static_string("md5"),
+      .action = digest_command_impl,
+      .data = {.hash = fssl_hash_md5},
+      .flags =
+          {
+              CLI_FLAG('p', Set),
+              CLI_FLAG('q', Set),
+              CLI_FLAG('r', Set),
+              CLI_FLAG('s', String),
+          },
+  });
 }
 
 __attribute__((constructor)) static void register_sha256_cmd() {
-  g_failed |= cli_register_command(CLI_COMMAND(
-      "sha256", digest_command_impl, {.hash = fssl_hash_sha256}, CLI_FLAG('p', Set),
-      CLI_FLAG('q', Set), CLI_FLAG('r', Set), CLI_FLAG('s', String)));
+  g_failed |= !cli_register_command((cli_command_t){
+      .name = libft_static_string("sha256"),
+      .action = digest_command_impl,
+      .data = {.hash = fssl_hash_sha256},
+      .flags =
+          {
+              CLI_FLAG('p', Set),
+              CLI_FLAG('q', Set),
+              CLI_FLAG('r', Set),
+              CLI_FLAG('s', String),
+          },
+  });
 }
 
 #if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
 __attribute__((constructor)) static void register_blake2_cmd() {
-  g_failed |= cli_register_command(CLI_COMMAND(
-      "blake2", digest_command_impl, {.hash = fssl_hash_blake2}, CLI_FLAG('p', Set),
-      CLI_FLAG('q', Set), CLI_FLAG('r', Set), CLI_FLAG('s', String)));
+  g_failed |= !cli_register_command((cli_command_t){
+      .name = libft_static_string("blake2"),
+      .action = digest_command_impl,
+      .data = {.hash = fssl_hash_blake2},
+      .flags =
+          {
+              CLI_FLAG('p', Set),
+              CLI_FLAG('q', Set),
+              CLI_FLAG('r', Set),
+              CLI_FLAG('s', String),
+          },
+  });
 }
 
 __attribute__((constructor)) static void register_sha1_cmd() {
-  g_failed |= cli_register_command(CLI_COMMAND(
-      "sha1", digest_command_impl, {.hash = fssl_hash_sha1}, CLI_FLAG('p', Set),
-      CLI_FLAG('q', Set), CLI_FLAG('r', Set), CLI_FLAG('s', String)));
+  g_failed |= !cli_register_command((cli_command_t){
+      .name = libft_static_string("sha1"),
+      .action = digest_command_impl,
+      .data = {.hash = fssl_hash_sha1},
+      .flags =
+          {
+              CLI_FLAG('p', Set),
+              CLI_FLAG('q', Set),
+              CLI_FLAG('r', Set),
+              CLI_FLAG('s', String),
+          },
+  });
 }
 #endif
 
@@ -93,6 +129,8 @@ static int cli_interactive_mode(App* app) {
 int main(int argc, char** argv) {
   int exit_code = 1;
   App ft_ssl = cli_app_init(fssl_cli_usage);
+  if (g_failed)
+    goto out;
 
 #if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
   // Interactive mode
@@ -104,9 +142,7 @@ int main(int argc, char** argv) {
 
   exit_code = cli_app_run(&ft_ssl, argc - 1, argv + 1);
 
-#if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
 out:
-#endif
   cli_app_deinit(&ft_ssl);
   return exit_code;
 }
