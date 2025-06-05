@@ -65,6 +65,21 @@ __attribute__((constructor)) static void register_sha1_cmd() {
           },
   });
 }
+
+__attribute__((constructor)) static void register_sha512_cmd() {
+  g_failed |= !cli_register_command((cli_command_t){
+      .name = libft_static_string("sha512"),
+      .action = digest_command_impl,
+      .data = {.hash = fssl_hash_sha512},
+      .flags =
+          {
+              CLI_FLAG('p', Set),
+              CLI_FLAG('q', Set),
+              CLI_FLAG('r', Set),
+              CLI_FLAG('s', String),
+          },
+  });
+}
 #endif
 
 const char* fssl_cli_usage =
@@ -74,6 +89,7 @@ const char* fssl_cli_usage =
 #if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
     "sha1\n"
     "blake2\n"
+    "sha512\n"
 #endif
     "\nFlags:\n"
     "-p -q -r -s\n";

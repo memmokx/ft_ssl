@@ -64,12 +64,6 @@ typedef struct {
 
 #define CLI_HAS_FLAG(flags, flag) (flags[(size_t)flag].type != FlagNone)
 #define CLI_FLAG(name, ty) {Flag##ty, name}
-#define CLI_COMMAND(name, action, data, ...)   \
-  (cli_command_t) {                            \
-    libft_static_string(name), action, data, { \
-      __VA_ARGS__                              \
-    }                                          \
-  }
 
 typedef struct cmd_node_s {
   cli_command_t cmd;

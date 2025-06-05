@@ -51,6 +51,12 @@
   ((uint32_t)((p)[3]) | (uint32_t)((p)[2] << 8) | (uint32_t)((p)[1] << 16) | \
    (uint32_t)((p)[0] << 24))
 
+#define fssl_be_read_u64(p)                                                      \
+  ((uint64_t)((p)[7]) | ((uint64_t)((p)[6]) << 8) | ((uint64_t)((p)[5]) << 16) | \
+   ((uint64_t)((p)[4]) << 24) | ((uint64_t)((p)[3]) << 32) |                     \
+   ((uint64_t)((p)[2]) << 40) | ((uint64_t)((p)[1]) << 48) |                     \
+   ((uint64_t)((p)[0]) << 56))
+
 /*
  * Original implementation
   ctx->size += len;

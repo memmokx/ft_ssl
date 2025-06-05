@@ -37,4 +37,21 @@ bool fssl_sha1_finish(fssl_sha1_ctx* ctx, uint8_t* buf, size_t buf_capacity);
 
 extern const fssl_hash_t fssl_hash_sha1;
 
+#define FSSL_SHA512_SUM_SIZE 64
+#define FSSL_SHA512_BLOCK_SIZE 128
+
+typedef struct {
+  uint64_t state[8];
+  uint8_t buffer[128];
+  // The total length that has been processed so far
+  uint64_t size;
+  uint8_t buffer_len;
+} fssl_sha512_ctx;
+
+void fssl_sha512_init(fssl_sha512_ctx* ctx);
+void fssl_sha512_write(fssl_sha512_ctx* ctx, const uint8_t* data, size_t len);
+bool fssl_sha512_finish(fssl_sha512_ctx* ctx, uint8_t* buf, size_t buf_capacity);
+
+extern const fssl_hash_t fssl_hash_sha512;
+
 #endif
