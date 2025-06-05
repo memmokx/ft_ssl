@@ -26,8 +26,6 @@ static fssl_force_inline uint32_t rotr32(uint32_t a, uint32_t r) {
 #define ROTXORSHIFT(p, __a, __b, __c) \
   (rotr32((p), __a) ^ rotr32((p), __b) ^ ((p) >> __c))
 
-#include <stdio.h>
-
 static fssl_force_inline void fssl_sha256_block(fssl_sha256_ctx* ctx,
                                                 const uint8_t* block) {
   uint32_t a, b, c, d, e, f, g, h;

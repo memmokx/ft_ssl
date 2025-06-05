@@ -33,8 +33,6 @@ static fssl_force_inline uint64_t rotr64(uint64_t a, uint64_t r) {
 #define ROTXORSHIFT(p, __a, __b, __c) \
   (rotr64((p), __a) ^ rotr64((p), __b) ^ ((p) >> __c))
 
-#include <stdio.h>
-
 static fssl_force_inline void fssl_sha512_block(fssl_sha512_ctx* ctx,
                                                 const uint8_t* block) {
   uint64_t a, b, c, d, e, f, g, h;
