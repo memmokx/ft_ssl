@@ -5,94 +5,44 @@
 
 uint8_t g_failed = 0;
 
-__attribute__((constructor)) static void register_md5_cmd() {
-  g_failed |= !cli_register_command((cli_command_t){
-      .name = libft_static_string("md5"),
-      .action = digest_command_impl,
-      .data = {.hash = fssl_hash_md5},
-      .flags =
-          {
-              CLI_FLAG('p', Set),
-              CLI_FLAG('q', Set),
-              CLI_FLAG('r', Set),
-              CLI_FLAG('s', String),
-          },
-  });
-}
+#define HASH_COMMAND_FLAGS   \
+  {                          \
+      CLI_FLAG('p', Set),    \
+      CLI_FLAG('q', Set),    \
+      CLI_FLAG('r', Set),    \
+      CLI_FLAG('s', String), \
+  }
 
-__attribute__((constructor)) static void register_sha256_cmd() {
-  g_failed |= !cli_register_command((cli_command_t){
-      .name = libft_static_string("sha256"),
-      .action = digest_command_impl,
-      .data = {.hash = fssl_hash_sha256},
-      .flags =
-          {
-              CLI_FLAG('p', Set),
-              CLI_FLAG('q', Set),
-              CLI_FLAG('r', Set),
-              CLI_FLAG('s', String),
-          },
-  });
-}
+#define FOREACH_HASH_COMMAND(V)                             \
+  V(md5, {.hash = fssl_hash_md5}, HASH_COMMAND_FLAGS)       \
+  V(sha1, {.hash = fssl_hash_sha1}, HASH_COMMAND_FLAGS)     \
+  V(sha256, {.hash = fssl_hash_sha256}, HASH_COMMAND_FLAGS) \
+  V(sha512, {.hash = fssl_hash_sha512}, HASH_COMMAND_FLAGS) \
+  V(blake2, {.hash = fssl_hash_blake2}, HASH_COMMAND_FLAGS)
 
-#if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
-__attribute__((constructor)) static void register_blake2_cmd() {
-  g_failed |= !cli_register_command((cli_command_t){
-      .name = libft_static_string("blake2"),
-      .action = digest_command_impl,
-      .data = {.hash = fssl_hash_blake2},
-      .flags =
-          {
-              CLI_FLAG('p', Set),
-              CLI_FLAG('q', Set),
-              CLI_FLAG('r', Set),
-              CLI_FLAG('s', String),
-          },
-  });
-}
+#define FOREACH_COMMAND(V) FOREACH_HASH_COMMAND(V)
 
-__attribute__((constructor)) static void register_sha1_cmd() {
-  g_failed |= !cli_register_command((cli_command_t){
-      .name = libft_static_string("sha1"),
-      .action = digest_command_impl,
-      .data = {.hash = fssl_hash_sha1},
-      .flags =
-          {
-              CLI_FLAG('p', Set),
-              CLI_FLAG('q', Set),
-              CLI_FLAG('r', Set),
-              CLI_FLAG('s', String),
-          },
-  });
-}
+#define REGISTER_COMMAND(_name, _data, _flags)                        \
+  __attribute__((constructor)) static void register_##_name##_cmd() { \
+    g_failed |= !cli_register_command((cli_command_t){                \
+        .name = libft_static_string(#_name),                          \
+        .action = digest_command_impl,                                \
+        .data = _data,                                                \
+        .flags = _flags,                                              \
+    });                                                               \
+  }
 
-__attribute__((constructor)) static void register_sha512_cmd() {
-  g_failed |= !cli_register_command((cli_command_t){
-      .name = libft_static_string("sha512"),
-      .action = digest_command_impl,
-      .data = {.hash = fssl_hash_sha512},
-      .flags =
-          {
-              CLI_FLAG('p', Set),
-              CLI_FLAG('q', Set),
-              CLI_FLAG('r', Set),
-              CLI_FLAG('s', String),
-          },
-  });
-}
-#endif
+FOREACH_COMMAND(REGISTER_COMMAND)
+#undef REGISTER_COMMAND
 
-const char* fssl_cli_usage =
-    "\nCommands:\n"
-    "md5\n"
-    "sha256\n"
-#if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
-    "sha1\n"
-    "blake2\n"
-    "sha512\n"
-#endif
-    "\nFlags:\n"
-    "-p -q -r -s\n";
+const char* fssl_cli_usage = "\nCommands:\n"
+
+#define REGISTER_COMMAND(name, ...) #name "\n"
+    FOREACH_COMMAND(REGISTER_COMMAND)
+#undef REGISTER_COMMAND
+
+        "\nFlags:\n"
+        "-p -q -r -s\n";
 
 #if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
 static int cli_interactive_mode(App* app) {
