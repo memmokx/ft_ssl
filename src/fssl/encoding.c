@@ -36,19 +36,21 @@ fssl_encoding_status fssl_hex_encode(const uint8_t* data,
 // clang-format off
 static const uint8_t fssl_hex_decode_table[] = {
     [0 ... 47] = 0xff,
-    [58 ... 96] = 0xff,
+    [58 ... 64] = 0xff,
+    [71 ... 96] = 0xff,
     [103 ... 255] = 0xff,
 
-    ['0'] = 0x00, ['a'] = 0xa,
-    ['1'] = 0x01, ['b'] = 0xb,
-    ['2'] = 0x02, ['c'] = 0xc,
-    ['3'] = 0x03, ['d'] = 0xd,
-    ['4'] = 0x04, ['e'] = 0xe,
-    ['5'] = 0x05, ['f'] = 0xf,
+    ['0'] = 0x00, ['a'] = 0xa, ['A'] = 0xa,
+    ['1'] = 0x01, ['b'] = 0xb, ['B'] = 0xb,
+    ['2'] = 0x02, ['c'] = 0xc, ['C'] = 0xc,
+    ['3'] = 0x03, ['d'] = 0xd, ['D'] = 0xd,
+    ['4'] = 0x04, ['e'] = 0xe, ['E'] = 0xe,
+    ['5'] = 0x05, ['f'] = 0xf, ['F'] = 0xf,
     ['6'] = 0x06,
     ['7'] = 0x07,
     ['8'] = 0x08,
     ['9'] = 0x09,
+
 };
 // clang-format on
 
