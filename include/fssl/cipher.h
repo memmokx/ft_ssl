@@ -13,7 +13,6 @@
  */
 typedef void (*fssl_block_cipher_encrypt_fn)(void* ctx,
                                              const uint8_t* in,
-                                             size_t in_size,
                                              uint8_t* out);
 
 /*!
@@ -22,7 +21,6 @@ typedef void (*fssl_block_cipher_encrypt_fn)(void* ctx,
  */
 typedef void (*fssl_block_cipher_decrypt_fn)(void* ctx,
                                              const uint8_t* in,
-                                             size_t in_size,
                                              uint8_t* out);
 
 /*!
