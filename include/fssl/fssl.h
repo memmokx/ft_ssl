@@ -7,4 +7,7 @@
 #include "md5.h"
 #include "sha.h"
 
+#include "cipher.h"
+#include "des.h"
+
 #endif

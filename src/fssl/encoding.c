@@ -66,6 +66,9 @@ fssl_encoding_status fssl_hex_decode(const char* data,
     const uint8_t high_nibble = fssl_hex_decode_table[(size_t)data[i]];
     const uint8_t low_nibble = fssl_hex_decode_table[(size_t)data[i + 1]];
 
+    if (high_nibble == 0xff || low_nibble == 0xff)
+      return INVALID_CHAR;
+
     buf[ctr] = (high_nibble << 4) | low_nibble;
 
     ctr++;

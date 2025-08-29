@@ -13,7 +13,8 @@ FSSL_SRC = src/fssl/encoding.c \
 		src/fssl/sha256.c \
 		src/fssl/sha512.c \
 		src/fssl/sha1.c \
-		src/fssl/blake2s.c
+		src/fssl/blake2s.c \
+		src/fssl/des.c
 
 CLI_SRC = src/cli/app.c src/cli/node.c
 MAIN_SRC = src/main.c src/digest.c src/cli.c
@@ -22,7 +23,8 @@ TEST_SRC = tests/fssl/test_md5.c \
  		tests/fssl/test_sha256.c \
  		tests/fssl/test_sha1.c \
  		tests/fssl/test_sha512.c \
- 		tests/fssl/test_blake2.c
+ 		tests/fssl/test_blake2.c \
+ 		tests/fssl/test_des.c
 
 
 LIBFSSL_OBJ = $(FSSL_SRC:.c=.o)

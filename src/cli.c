@@ -5,9 +5,9 @@
 
 uint8_t g_failed = 0;
 
-#define UNIQUE_NAME(base) UNIQUE_NAME_IMPL(base, __COUNTER__)
-#define UNIQUE_NAME_IMPL(base, counter) UNIQUE_NAME_CONCAT(base, counter)
 #define UNIQUE_NAME_CONCAT(base, counter) base##counter
+#define UNIQUE_NAME_IMPL(base, counter) UNIQUE_NAME_CONCAT(base, counter)
+#define UNIQUE_NAME(base) UNIQUE_NAME_IMPL(base, __COUNTER__)
 
 #define HASH_COMMAND_FLAGS   \
   {                          \
@@ -61,6 +61,7 @@ const char* fssl_cli_usage =
 #define X(name, ...) name "\n"
     FOREACH_HASH_COMMAND(X)
 #undef X
+
         "\nCipher Commands:\n"
 #define X(name, ...) name "\n"
     FOREACH_CIPHER_COMMAND(X)
