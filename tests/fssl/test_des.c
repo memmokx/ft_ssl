@@ -39,3 +39,26 @@ Test(fssl, des_key_schedule) {
                  expected_sk[i]);
   }
 }
+
+Test(fssl, des_encrypt_block) {
+  uint8_t key[FSSL_DES_KEY_SIZE] = {0x13, 0x34, 0x57, 0x79, 0x9B, 0xBC, 0xDF, 0xF1};
+  fssl_des_ctx ctx;
+  if (fssl_des_init(&ctx, key) != FSSL_SUCCESS) {
+    cr_assert(false, "fssl_des_init failed");
+    return;
+  }
+
+  uint8_t msg[FSSL_DES_BLOCK_SIZE] = {0b00000001, 0b00100011, 0b01000101,
+                                      0b01100111, 0b10001001, 0b10101011,
+                                      0b11001101, 0b11101111};
+  fssl_cipher_des.block_encrypt_fn(&ctx, msg, msg);
+
+  uint8_t expected[FSSL_DES_BLOCK_SIZE] = {0x85, 0xE8, 0x13, 0x54,
+                                           0x0F, 0x0A, 0xB4, 0x05};
+
+  for (size_t i = 0; i < FSSL_DES_BLOCK_SIZE; ++i) {
+    cr_assert_eq(msg[i], expected[i],
+                 "Ciphertext %zu mismatch: got 0x%x, expected 0x%x", i, msg[i],
+                 expected[i]);
+  }
+}
