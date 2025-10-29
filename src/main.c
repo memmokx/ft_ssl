@@ -2,7 +2,11 @@
 #include <libft/io.h>
 
 extern uint8_t g_failed;
-extern char *fssl_cli_usage;
+extern char* fssl_cli_usage;
+
+#if FSSL_CLI_FEATURES > FSSL_MD5_BONUS
+int cli_interactive_mode(App* app);
+#endif
 
 int main(int argc, char** argv) {
   int exit_code = 1;

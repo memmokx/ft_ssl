@@ -91,6 +91,8 @@ $(LIBFT):
 	@echo "$(COLOUR_GREEN)Compiling libft$(COLOUR_END)"
 	@make -j8 -C libft/ all --no-print-directory
 
+format:
+	clang-format -i $(SRC) $(TEST_SRC)
 clean:
 	@rm -f $(OBJ)
 	@rm -f $(TEST_OBJ)
@@ -107,4 +109,4 @@ re : fclean all
 bonus: FSSL_CLI_FEATURES=1
 bonus: $(NAME)
 
-.PHONY: re all fclean clean lib test
+.PHONY: re all fclean clean lib test format bonus

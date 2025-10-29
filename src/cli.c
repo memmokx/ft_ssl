@@ -69,7 +69,7 @@ const char* fssl_cli_usage =
     ;
 
 #if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
-static int cli_interactive_mode(App* app) {
+int cli_interactive_mode(App* app) {
   int exit_code = 0;
   char** argv = nullptr;
   string line = {};
