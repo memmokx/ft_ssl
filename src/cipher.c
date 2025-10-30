@@ -68,7 +68,7 @@ static uint8_t* decode(const string data,
 
   // Pad with zeroes if we were asked to.
   if (padding == PADDING_PAD && written < expected_size) {
-    ft_bzero(&buffer[written], expected_size-written);
+    ft_bzero(&buffer[written], expected_size - written);
   }
 
   return buffer;
@@ -105,7 +105,7 @@ static Operation command_operation(cli_flags_t* flags) {
   const cli_flag_t* encrypt = cli_flags_get(flags, CIPHER_FLAG_ENCRYPT);
   const cli_flag_t* decrypt = cli_flags_get(flags, CIPHER_FLAG_DECRYPT);
 
-  if (encrypt == nullptr && decrypt != nullptr)
+  if (!encrypt && decrypt)
     op = OP_DECRYPT;
   else if (encrypt && decrypt) {
     op = encrypt->order > decrypt->order ? OP_ENCRYPT : OP_DECRYPT;
@@ -145,6 +145,13 @@ static string read_password(string command,
   if (!first.ptr) {
     seterr(err, FSSL_ERR_INTERNAL);
     goto err;
+  }
+
+  // In decrypt mode, we do not verify the password twice.
+  if (operation == OP_DECRYPT) {
+    password = first;
+    first = (string){};
+    goto done;
   }
 
   prompt = string_concat(&libft_static_string("Verifying - "), &prompt, 0b01);
@@ -201,6 +208,70 @@ uint8_t* fssl_pbkdf(const string password,
 }
 
 /*!
+ * Derive a secret key using the chosen KDF.
+ * @param command The cipher command name.
+ * @param operation The current operation mode, the password prompt depends on this.
+ * @param pf The password flag if any.
+ * @param sf The salt flag if any.
+ * @param key_size The expected key_size. The returned buffer is guaranteed to be at
+ * least of this size.
+ * @param salt_size The salt size to generate.
+ * @param[out] err
+ * @return
+ */
+static uint8_t* derive_key_from_password(string command,
+                                         const Operation operation,
+                                         const cli_flag_t* pf,
+                                         const cli_flag_t* sf,
+                                         const size_t key_size,
+                                         const size_t salt_size,
+                                         fssl_error_t* err) {
+  uint8_t* salt = nullptr;
+  uint8_t* key = nullptr;
+  string pass = {};
+
+  fssl_error_t result = FSSL_SUCCESS;
+  bool mismatch = false;
+
+  if (pf) {
+    pass = string_new(pf->value.str.ptr);
+    if (!pass.ptr)
+      result = FSSL_ERR_OUT_OF_MEMORY;
+  } else {
+    pass = read_password(command, operation, &result, &mismatch);
+  }
+
+  // In case we read the password and the user failed to verify.
+  if (mismatch) {
+    ft_fprintf(STDERR_FILENO, "Verify failure\nbad password read\n");
+    seterr(err, FSSL_ERR_INTERNAL);
+    goto done;
+  }
+
+  checkerr(err, result) {
+    logerr("ft_ssl: error -%c flag: %s\n", CIPHER_FLAG_PASSWORD,
+           fssl_error_string(result));
+    goto done;
+  }
+
+  salt = flag_decode_or_rand(sf, salt_size, CIPHER_FLAG_SALT, &result);
+  checkerr(err, result) {
+    goto done;
+  }
+
+  key = fssl_pbkdf(pass, salt, salt_size, key_size, &result);
+
+done:
+  if (salt)
+    free(salt);
+  if (pass.ptr) {
+    ft_bzero(pass.ptr, pass.len);
+    string_destroy(&pass);
+  }
+  return key;
+}
+
+/*!
  *
  * @param command
  * @param operation
@@ -223,44 +294,16 @@ static DeriveResult derive_inputs(string command,
                                   const size_t iv_size,
                                   const size_t salt_size,
                                   fssl_error_t* err) {
-  uint8_t* key = nullptr;
+  uint8_t* key;
   uint8_t* iv = nullptr;
-  uint8_t* salt = nullptr;
-  string pass = {};
 
   fssl_error_t result = FSSL_SUCCESS;
-  bool mismatch = false;
 
   if (kf) {
     key = decode(kf->value.str, PADDING_PAD, key_size, &result);
   } else {
-    if (pf) {
-      pass = string_new(pf->value.str.ptr);
-      if (!pass.ptr)
-        result = FSSL_ERR_OUT_OF_MEMORY;
-    } else {
-      pass = read_password(command, operation, &result, &mismatch);
-    }
-
-    // In case we read the password and the user failed to verify.
-    if (mismatch) {
-      ft_fprintf(STDERR_FILENO, "Verify failure\nbad password read\n");
-      seterr(err, FSSL_ERR_INTERNAL);
-      goto err;
-    }
-
-    checkerr(err, result) {
-      logerr("ft_ssl: error -%c flag: %s\n", CIPHER_FLAG_PASSWORD,
-             fssl_error_string(result));
-      goto err;
-    }
-
-    salt = flag_decode_or_rand(sf, salt_size, CIPHER_FLAG_SALT, &result);
-    checkerr(err, result) {
-      goto err;
-    }
-
-    key = fssl_pbkdf(pass, salt, salt_size, key_size, &result);
+    key = derive_key_from_password(command, operation, pf, sf, key_size, salt_size,
+                                   &result);
   }
 
   // We failed to decode the key flag OR the KDF failed.
@@ -274,11 +317,6 @@ static DeriveResult derive_inputs(string command,
     goto err;
   }
 
-  if (pass.ptr)
-    string_destroy(&pass);
-  if (salt)
-    free(salt);
-
   return (DeriveResult){.key = key, .iv = iv};
 
 err:
@@ -286,10 +324,6 @@ err:
     free(key);
   if (iv)
     free(iv);
-  if (pass.ptr)
-    string_destroy(&pass);
-  if (salt)
-    free(salt);
   return (DeriveResult){};
 }
 
@@ -329,20 +363,6 @@ int cipher_command_impl(string command,
     exit_code = err;
     goto done;
   }
-
-  ft_fprintf(STDERR_FILENO, "key: {");
-  for (size_t i = 0; i < cipher->key_size; i++) {
-    ft_fprintf(STDERR_FILENO, "0x%x", derived.key[i]);
-    if (i != cipher->key_size - 1)
-      ft_fprintf(STDERR_FILENO, " ");
-  }
-  ft_fprintf(STDERR_FILENO, "}\niv: {");
-  for (size_t i = 0; i < cipher->block_size; i++) {
-    ft_fprintf(STDERR_FILENO, "0x%x", derived.iv[i]);
-    if (i != cipher->block_size - 1)
-      ft_fprintf(STDERR_FILENO, " ");
-  }
-  ft_fprintf(STDERR_FILENO, "}\n");
 
   (void)output_flag;
   (void)input_flag;
