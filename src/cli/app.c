@@ -53,15 +53,16 @@ static cli_flag_type cli_command_flag_type(const cli_command_t* cmd, char flag) 
   return FlagNone;
 }
 
-static cli_flag_t cli_flag_from_arg(char flag, cli_flag_type ty, char* arg) {
+static cli_flag_t cli_flag_from_arg(char flag, cli_flag_type ty, char* arg, uint32_t index) {
   if (ty == FlagString && arg != nullptr)
     return (cli_flag_t){
         .name = flag,
         .type = ty,
+        .order = index,
         .value = {.str = string_new_owned(arg)},
     };
 
-  return (cli_flag_t){.name = flag, .type = ty, .value = {}};
+  return (cli_flag_t){.name = flag, .type = ty, .order = index, .value = {}};
 }
 
 static cli_command_t* cli_get_command(string name) {
@@ -103,8 +104,9 @@ static int cli_run_command(App* app, const cli_command_t* cmd, int argc, char** 
         return 1;
       }
 
+      const uint32_t order = i;
       app->flags.table[(size_t)flag] =
-          cli_flag_from_arg(flag, ty, (ty == FlagString) ? argv[++i] : nullptr);
+          cli_flag_from_arg(flag, ty, (ty == FlagString) ? argv[++i] : nullptr, order);
 
       continue;
     }

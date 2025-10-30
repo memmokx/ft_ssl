@@ -30,6 +30,10 @@ typedef union {
 typedef struct {
   cli_flag_type type;
   cli_flag_value value;
+  // This is the order in the arguments list.
+  // Can be useful if two flags conflict with each other and you may need to choose
+  // only of them.
+  uint32_t order;
   char name;
 } cli_flag_t;
 
@@ -46,6 +50,10 @@ cli_flag_t* cli_flags_get(cli_flags_t* flags, char flag);
 
 typedef union {
   fssl_hash_t hash;
+  struct {
+    fssl_block_cipher_t cipher;
+    fssl_cipher_mode_t mode;
+  } cipher;
 } cli_command_data;
 
 typedef int (

@@ -3,25 +3,28 @@
 
 #include <fssl/defines.h>
 #include <fssl/error.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <sys/types.h>
+
+typedef enum {
+  NONE,
+  ECB,
+  CBC,
+  CTR,
+  CFB,
+  OFB,
+  PCBC,
+} fssl_cipher_mode_t;
 
 /*!
  * @brief The signature for cipher block functions. This function will be called
  * on each block of data to encrypt.
  */
-typedef void (*fssl_block_cipher_encrypt_fn)(void* ctx,
-                                             const uint8_t* in,
-                                             uint8_t* out);
+typedef void (*fssl_block_cipher_encrypt_fn)(void* ctx, const uint8_t* in, uint8_t* out);
 
 /*!
  * @brief The signature for cipher block functions. This function will be called
  * on each block of data to decrypt.
  */
-typedef void (*fssl_block_cipher_decrypt_fn)(void* ctx,
-                                             const uint8_t* in,
-                                             uint8_t* out);
+typedef void (*fssl_block_cipher_decrypt_fn)(void* ctx, const uint8_t* in, uint8_t* out);
 
 /*!
  * @brief The signature for block cipher initialization functions. This function
@@ -49,18 +52,23 @@ typedef struct {
 
 /*!
  * @brief The signature for block mode functions.
+ * @param cipher The cipher descriptor, used to encrypt/decrypt each block
+ * @param ctx The cipher context.
  * @param in The input data to encrypt/decrypt.
  * @param in_size The size of the input data.
  * @param out The output buffer.
- * @param out_size The capacity of the output buffer.
+ * @param iv The Initialization Vector, as some Block modes require one.
  */
-typedef size_t (*fssl_block_mode_fn)(const uint8_t* in,
+typedef size_t (*fssl_block_mode_fn)(const fssl_block_cipher_t* cipher,
+                                     void* ctx,
+                                     const uint8_t* in,
                                      size_t in_size,
                                      uint8_t* out,
-                                     size_t out_size);
+                                     const fssl_slice_t* iv);
 
 typedef struct {
-  size_t iv_size;
+  fssl_slice_t iv;
+  fssl_block_cipher_t* cipher;
 
   fssl_block_mode_fn encrypt_fn;
   fssl_block_mode_fn decrypt_fn;

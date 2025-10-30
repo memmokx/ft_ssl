@@ -70,6 +70,7 @@ size_t							string_find_str(t_string *str,
 int								string_find_char(t_string *str,
 									const char to_find);
 
+void                                                    string_to_upper(t_string *str);
 //			Internal string methods
 
 int								string_grow(t_string *str, size_t new_cap);

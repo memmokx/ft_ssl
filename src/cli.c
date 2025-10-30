@@ -1,9 +1,13 @@
+#include <cipher.h>
 #include <cli/cli.h>
 #include <digest.h>
 #include "libft/io.h"
 #include "libft/memory.h"
 
 uint8_t g_failed = 0;
+
+#define cdata(_type, _data) {._type = _data}
+#define cipherdata(_cipher, _mode) {.cipher = _cipher, .mode = _mode}
 
 #define UNIQUE_NAME_CONCAT(base, counter) base##counter
 #define UNIQUE_NAME_IMPL(base, counter) UNIQUE_NAME_CONCAT(base, counter)
@@ -24,27 +28,30 @@ uint8_t g_failed = 0;
       CLI_FLAG('p', String), CLI_FLAG('s', String), CLI_FLAG('v', String), \
   }
 
-#define FOREACH_HASH_COMMAND(V)                               \
-  V("md5", {.hash = fssl_hash_md5}, HASH_COMMAND_FLAGS)       \
-  V("sha1", {.hash = fssl_hash_sha1}, HASH_COMMAND_FLAGS)     \
-  V("sha256", {.hash = fssl_hash_sha256}, HASH_COMMAND_FLAGS) \
-  V("sha512", {.hash = fssl_hash_sha512}, HASH_COMMAND_FLAGS) \
-  V("blake2", {.hash = fssl_hash_blake2}, HASH_COMMAND_FLAGS)
+#define FOREACH_HASH_COMMAND(V)                                                       \
+  V("md5", cdata(hash, fssl_hash_md5), HASH_COMMAND_FLAGS, digest_command_impl)       \
+  V("sha1", cdata(hash, fssl_hash_sha1), HASH_COMMAND_FLAGS, digest_command_impl)     \
+  V("sha256", cdata(hash, fssl_hash_sha256), HASH_COMMAND_FLAGS, digest_command_impl) \
+  V("sha512", cdata(hash, fssl_hash_sha512), HASH_COMMAND_FLAGS, digest_command_impl) \
+  V("blake2", cdata(hash, fssl_hash_blake2), HASH_COMMAND_FLAGS, digest_command_impl)
 
-#define FOREACH_CIPHER_COMMAND(V)     \
-  V("des", {}, DES_COMMAND_FLAGS)     \
-  V("des-ecb", {}, DES_COMMAND_FLAGS) \
-  V("des-cbc", {}, DES_COMMAND_FLAGS)
+#define FOREACH_CIPHER_COMMAND(V)                                                  \
+  V("des", cdata(cipher, cipherdata(fssl_cipher_des, NONE)), DES_COMMAND_FLAGS,    \
+    cipher_command_impl)                                                           \
+  V("des-ecb", cdata(cipher, cipherdata(fssl_cipher_des, ECB)), DES_COMMAND_FLAGS, \
+    cipher_command_impl)                                                           \
+  V("des-cbc", cdata(cipher, cipherdata(fssl_cipher_des, CBC)), DES_COMMAND_FLAGS, \
+    cipher_command_impl)
 
 #define FOREACH_COMMAND(V) \
   FOREACH_HASH_COMMAND(V)  \
   FOREACH_CIPHER_COMMAND(V)
 
-#define X(_name, _data, _flags)                                          \
+#define X(_name, _data, _flags, _action)                                 \
   __attribute__((constructor)) static void UNIQUE_NAME(register_cmd)() { \
     g_failed |= !cli_register_command((cli_command_t){                   \
         .name = libft_static_string(_name),                              \
-        .action = digest_command_impl,                                   \
+        .action = _action,                                               \
         .data = _data,                                                   \
         .flags = _flags,                                                 \
     });                                                                  \
@@ -55,7 +62,7 @@ FOREACH_COMMAND(X)
 #undef X
 
 const char* fssl_cli_usage =
-    "\nStandard Commands:\n"
+    "\nStandard Commands:\n\n"
 
     "Message Digest Commands:\n"
 #define X(name, ...) name "\n"

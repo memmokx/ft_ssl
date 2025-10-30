@@ -1,5 +1,6 @@
-#include <libft/string.h>
+#include <ctype.h>
 #include <libft/memory.h>
+#include <libft/string.h>
 
 t_string	string_slice(t_string *str, size_t start, size_t end)
 {
@@ -54,6 +55,16 @@ bool	string_equal(const t_string *str1, const t_string *str2)
 	if (ft_strcmp(str1->ptr, str2->ptr) == 0)
 		return (true);
 	return (false);
+}
+
+#include <stddef.h>
+
+void string_to_upper(t_string *str) {
+  if (!str || !str->ptr) return;
+  for (size_t i = 0; i < str->len; i++) {
+    const char c = str->ptr[i];
+    str->ptr[i] = (c >= 'a' && c <= 'z') ? (c + ('A' - 'a')) : c;
+  }
 }
 
 ssize_t	string_index_of(const t_string str, char c)

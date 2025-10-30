@@ -1,6 +1,14 @@
 #ifndef FSSL_DEFINES_H
 #define FSSL_DEFINES_H
 
+#include <stddef.h>
+#include <stdint.h>
+
+typedef struct {
+  const uint8_t* data;
+  size_t size;
+} fssl_slice_t;
+
 #define fssl_force_inline __attribute__((always_inline)) inline
 
 #define fssl_le_write_u64(p, n)  \

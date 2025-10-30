@@ -1,25 +1,12 @@
 #include "fssl/fssl.h"
 
-static const char* fssl_status_table[] = {
-    [SUCCESS] = "Success.",
-    [TOO_SMALL_BUFFER] = "Provided buffer is too small.",
-    [INVALID_CHAR] = "Input data contain an invalid character.",
-    [FAILURE] = "Unable to encode/decode input data."};
-
 static const char fssl_hex_table[] = "0123456789abcdef";
 
-const char* fssl_encoding_status_string(fssl_encoding_status status) {
-  return fssl_status_table[status];
-}
-
-fssl_encoding_status fssl_hex_encode(const uint8_t* data,
-                                     size_t len,
-                                     char* buf,
-                                     size_t buf_capacity) {
+fssl_error_t fssl_hex_encode(const uint8_t* data, size_t len, char* buf, size_t buf_capacity) {
   const size_t target_len = fssl_hex_encoded_size(len);
 
   if (target_len > buf_capacity)
-    return TOO_SMALL_BUFFER;
+    return FSSL_ERR_BUFFER_TOO_SMALL;
 
   for (size_t i = 0; i < target_len; i += 2) {
     const uint8_t c = *data;
@@ -30,7 +17,7 @@ fssl_encoding_status fssl_hex_encode(const uint8_t* data,
     data++;
   }
 
-  return SUCCESS;
+  return FSSL_SUCCESS;
 }
 
 // clang-format off
@@ -54,12 +41,13 @@ static const uint8_t fssl_hex_decode_table[] = {
 };
 // clang-format on
 
-fssl_encoding_status fssl_hex_decode(const char* data,
-                                     size_t len,
-                                     uint8_t* buf,
-                                     size_t buf_capacity) {
+fssl_error_t fssl_hex_decode(const char* data,
+                             size_t len,
+                             uint8_t* buf,
+                             size_t buf_capacity,
+                             size_t* written) {
   if (fssl_hex_decoded_size(len) > buf_capacity)
-    return TOO_SMALL_BUFFER;
+    return FSSL_ERR_BUFFER_TOO_SMALL;
 
   size_t ctr = 0;
   for (size_t i = 0; i < len; i += 2) {
@@ -67,12 +55,15 @@ fssl_encoding_status fssl_hex_decode(const char* data,
     const uint8_t low_nibble = fssl_hex_decode_table[(size_t)data[i + 1]];
 
     if (high_nibble == 0xff || low_nibble == 0xff)
-      return INVALID_CHAR;
+      return FSSL_ERR_INVALID_CHARACTER;
 
     buf[ctr] = (high_nibble << 4) | low_nibble;
 
     ctr++;
   }
 
-  return SUCCESS;
+  if (written)
+    *written = ctr;
+
+  return FSSL_SUCCESS;
 }

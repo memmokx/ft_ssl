@@ -1,7 +1,7 @@
 NAME = ft_ssl
 CC = cc
 
-CFLAGS = -Wall -Wextra -Werror -std=c23 -fPIC
+CFLAGS = -Wall -Wextra -Werror -std=c23 -fPIC -lbsd
 
 FSSL_CLI_FEATURES = 0
 
@@ -14,10 +14,14 @@ FSSL_SRC = src/fssl/encoding.c \
 		src/fssl/sha512.c \
 		src/fssl/sha1.c \
 		src/fssl/blake2s.c \
-		src/fssl/des.c
+		src/fssl/des.c \
+		src/fssl/block.c \
+		src/fssl/error.c \
+		src/fssl/password.c \
+		src/fssl/rand.c
 
 CLI_SRC = src/cli/app.c src/cli/node.c
-MAIN_SRC = src/main.c src/digest.c src/cli.c
+MAIN_SRC = src/main.c src/digest.c src/cli.c src/cipher.c
 
 TEST_SRC = tests/fssl/test_md5.c \
  		tests/fssl/test_sha256.c \
