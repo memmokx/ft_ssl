@@ -18,17 +18,20 @@ FSSL_SRC = src/fssl/encoding.c \
 		src/fssl/block.c \
 		src/fssl/error.c \
 		src/fssl/password.c \
+		src/fssl/kdf.c \
 		src/fssl/rand.c
 
 CLI_SRC = src/cli/app.c src/cli/node.c
-MAIN_SRC = src/main.c src/digest.c src/cli.c src/cipher.c
+MAIN_SRC = src/main.c src/digest.c src/cli.c src/cipher.c src/io.c
 
 TEST_SRC = tests/fssl/test_md5.c \
  		tests/fssl/test_sha256.c \
  		tests/fssl/test_sha1.c \
  		tests/fssl/test_sha512.c \
  		tests/fssl/test_blake2.c \
- 		tests/fssl/test_des.c
+ 		tests/fssl/test_des.c \
+ 		tests/fssl/test_kdf.c \
+ 		tests/fssl/test_base64.c
 
 
 LIBFSSL_OBJ = $(FSSL_SRC:.c=.o)
