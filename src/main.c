@@ -1,5 +1,4 @@
 #include <cli/cli.h>
-#include <libft/io.h>
 
 extern uint8_t g_failed;
 extern char* fssl_cli_usage;

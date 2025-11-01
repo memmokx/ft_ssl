@@ -22,7 +22,12 @@ FSSL_SRC = src/fssl/encoding.c \
 		src/fssl/rand.c
 
 CLI_SRC = src/cli/app.c src/cli/node.c
-MAIN_SRC = src/main.c src/digest.c src/cli.c src/cipher.c src/io.c
+MAIN_SRC = src/main.c \
+		src/cli.c \
+		src/io.c \
+		src/commands/digest.c \
+		src/commands/cipher.c \
+		src/commands/standard.c
 
 TEST_SRC = tests/fssl/test_md5.c \
  		tests/fssl/test_sha256.c \

@@ -1,6 +1,5 @@
-#include <cipher.h>
 #include <cli/cli.h>
-#include <digest.h>
+#include <commands.h>
 #include "libft/io.h"
 #include "libft/memory.h"
 
@@ -28,6 +27,14 @@ uint8_t g_failed = 0;
       CLI_FLAG('p', String), CLI_FLAG('s', String), CLI_FLAG('v', String), \
   }
 
+#define B64_COMMAND_FLAGS    \
+  {                          \
+      CLI_FLAG('d', Set),    \
+      CLI_FLAG('e', Set),    \
+      CLI_FLAG('i', String), \
+      CLI_FLAG('o', String), \
+  }
+
 #define FOREACH_HASH_COMMAND(V)                                                       \
   V("md5", cdata(hash, fssl_hash_md5), HASH_COMMAND_FLAGS, digest_command_impl)       \
   V("sha1", cdata(hash, fssl_hash_sha1), HASH_COMMAND_FLAGS, digest_command_impl)     \
@@ -36,6 +43,7 @@ uint8_t g_failed = 0;
   V("blake2", cdata(hash, fssl_hash_blake2), HASH_COMMAND_FLAGS, digest_command_impl)
 
 #define FOREACH_CIPHER_COMMAND(V)                                                  \
+  V("base64", {}, B64_COMMAND_FLAGS, base64_command_impl)                          \
   V("des", cdata(cipher, cipherdata(fssl_cipher_des, NONE)), DES_COMMAND_FLAGS,    \
     cipher_command_impl)                                                           \
   V("des-ecb", cdata(cipher, cipherdata(fssl_cipher_des, ECB)), DES_COMMAND_FLAGS, \
