@@ -179,6 +179,7 @@ static void b64_reader_deinit(Base64Reader** ctx) {
   if (!ctx || !*ctx)
     return;
 
+  io_reader_deinit((*ctx)->inner);
   **ctx = (Base64Reader){};
   free(*ctx);
   *ctx = nullptr;
@@ -353,6 +354,7 @@ static void b64_writer_deinit(Base64Writer** ctx) {
   if (!ctx || !*ctx)
     return;
 
+  io_writer_deinit((*ctx)->inner);
   **ctx = (Base64Writer){};
   free(*ctx);
   *ctx = nullptr;
