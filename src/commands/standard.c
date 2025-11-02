@@ -37,13 +37,10 @@ static Option(IoReader)
     base64_reader(IoReader* parent, const Operation op, const cli_flag_t* input_flag) {
   if (input_flag) {
     const Option(IoReader) tmp = file_reader_new(input_flag->value.str.ptr, true);
-    // TODO: let Some(v) ?
-    if (option_is_none(tmp)) {
+    option_let_some_else(tmp, *parent) else {
       ssl_log_warn("ft_ssl: base64: unable to open input file\n");
       goto err;
     }
-
-    *parent = tmp.v;
   }
 
   // We need to read base64 data, so wrap the parent with a base64 reader.
@@ -67,13 +64,10 @@ static Option(IoWriterCloser)
   if (output_flag) {
     const Option(IoWriter) tmp =
         file_writer_new(output_flag->value.str.ptr, true, O_CREAT);
-    // TODO: let Some(v) ?
-    if (option_is_none(tmp)) {
+    option_let_some_else(tmp, *parent) else {
       ssl_log_warn("ft_ssl: base64: unable to open input file\n");
       goto err;
     }
-
-    *parent = tmp.v;
   }
 
   if (op == OP_ENCODE) {
@@ -114,20 +108,16 @@ int base64_command_impl(string command,
   IoWriterCloser writer = {};
 
   const Option(IoReader) oreader = base64_reader(&input, op, input_flag);
-  if (option_is_none(oreader)) {
+  option_let_some_else(oreader, reader) else {
     exit_code = 1;
     goto done;
   }
-
-  reader = oreader.v;
 
   const Option(IoWriterCloser) owriter = base64_writer(&output, op, output_flag);
-  if (option_is_none(owriter)) {
+  option_let_some_else(owriter, writer) else {
     exit_code = 1;
     goto done;
   }
-
-  writer = owriter.v;
 
   if (io_copy(&reader, (IoWriter*)&writer) < 0)
     exit_code = 1;

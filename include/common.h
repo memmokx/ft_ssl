@@ -32,10 +32,24 @@
     _opt.v;                   \
   })
 
+// clang-format off
+
+#define option_let_some(opt, variable) \
+    (option_is_some(opt)) \
+      for (bool _c_c = true; _c_c; _c_c = false) \
+        for (auto const variable = (opt).v; _c_c; _c_c = false) \
+
+#define option_let_some_else(opt, variable) \
+    if (option_is_some(opt)) \
+      for (bool _c_c = true; _c_c; _c_c = false) \
+        for (variable = (opt).v; _c_c; _c_c = false) {} \
+
+// clang-format on
+
 REGISTER_OPTION(uint8_t);
 REGISTER_OPTION(uint16_t);
 
-#define RESULT_CONCAT_(a, b) a##b
+#define RESULT_CONCAT_(a, b) a## b
 #define RESULT_CONCAT_IMPL(a, b) RESULT_CONCAT_(a, b)
 #define RESULT_NAME(T, E) RESULT_CONCAT_IMPL(Result__, RESULT_CONCAT_IMPL(T, E))
 
@@ -72,8 +86,8 @@ REGISTER_OPTION(uint16_t);
 #define SSL_LEVEL_ERROR "error"
 
 #define ssl_log(level, fmt, ...) \
-  ft_fprintf(2, "%s   %s:%d " fmt, level, __FILE__, __LINE__, ##__VA_ARGS__)
-#define ssl_log_warn(fmt, ...) ssl_log(SSL_LEVEL_WARN, fmt, ##__VA_ARGS__)
-#define ssl_log_err(fmt, ...) ssl_log(SSL_LEVEL_ERROR, fmt, ##__VA_ARGS__)
+  ft_fprintf(2, "%s   %s:%d " fmt, level, __FILE__, __LINE__, ## __VA_ARGS__)
+#define ssl_log_warn(fmt, ...) ssl_log(SSL_LEVEL_WARN, fmt, ## __VA_ARGS__)
+#define ssl_log_err(fmt, ...) ssl_log(SSL_LEVEL_ERROR, fmt, ## __VA_ARGS__)
 
 #endif
