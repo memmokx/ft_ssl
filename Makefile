@@ -66,7 +66,7 @@ ifdef DEBUG
 endif
 
 ifdef SANITIZE
-	CFLAGS += -g -fsanitize=address
+	CFLAGS += -g -fsanitize=address,undefined,leak
 endif
 
 ifndef NO_SILENT

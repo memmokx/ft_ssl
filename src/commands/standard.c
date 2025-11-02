@@ -1,5 +1,6 @@
 #include <commands.h>
 
+#include <fcntl.h>
 #include "io.h"
 
 typedef enum {
@@ -10,7 +11,7 @@ typedef enum {
 constexpr auto BASE64_FLAG_ENCODE = 'e';
 constexpr auto BASE64_FLAG_DECODE = 'd';
 constexpr auto BASE64_FLAG_INPUT = 'i';
-// constexpr auto BASE64_FLAG_OUTPUT = 'o';
+constexpr auto BASE64_FLAG_OUTPUT = 'o';
 
 /*!
  * Based on the given flags, return the current mode of operation.
@@ -32,10 +33,63 @@ static Operation command_operation(cli_flags_t* flags) {
   return op;
 }
 
-typedef struct {
-  IoReader reader;
-  bool freeable;
-} Reader;
+static Option(IoReader)
+    base64_reader(IoReader* parent, const Operation op, const cli_flag_t* input_flag) {
+  if (input_flag) {
+    const Option(IoReader) tmp = file_reader_new(input_flag->value.str.ptr, true);
+    // TODO: let Some(v) ?
+    if (option_is_none(tmp)) {
+      ssl_log_warn("ft_ssl: base64: unable to open input file\n");
+      goto err;
+    }
+
+    *parent = tmp.v;
+  }
+
+  // We need to read base64 data, so wrap the parent with a base64 reader.
+  if (op == OP_DECODE) {
+    const Option(IoReader) b64 = b64_reader_new(parent, true);
+    if (option_is_none(b64)) {
+      ssl_log_warn("ft_ssl: base64: out of memory\n");
+      goto err;
+    }
+
+    return b64;
+  }
+
+  return (Option(IoReader))Some(*parent);
+err:
+  return None(IoReader);
+}
+
+static Option(IoWriterCloser)
+    base64_writer(IoWriter* parent, const Operation op, const cli_flag_t* output_flag) {
+  if (output_flag) {
+    const Option(IoWriter) tmp =
+        file_writer_new(output_flag->value.str.ptr, true, O_CREAT);
+    // TODO: let Some(v) ?
+    if (option_is_none(tmp)) {
+      ssl_log_warn("ft_ssl: base64: unable to open input file\n");
+      goto err;
+    }
+
+    *parent = tmp.v;
+  }
+
+  if (op == OP_ENCODE) {
+    const Option(IoWriterCloser) b64 = b64_writer_new(parent);
+    if (option_is_none(b64)) {
+      ssl_log_warn("ft_ssl: base64: out of memory\n");
+      goto err;
+    }
+
+    return b64;
+  }
+
+  return (Option(IoWriterCloser))Some(io_writer_closer_from(*parent));
+err:
+  return None(IoWriterCloser);
+}
 
 int base64_command_impl(string command,
                         const cli_command_data* data,
@@ -50,58 +104,39 @@ int base64_command_impl(string command,
   int exit_code = 0;
 
   const Operation op = command_operation(flags);
-
   const cli_flag_t* input_flag = cli_flags_get(flags, BASE64_FLAG_INPUT);
-  // const cli_flag_t* output_flag = cli_flags_get(flags, BASE64_FLAG_OUTPUT);
+  const cli_flag_t* output_flag = cli_flags_get(flags, BASE64_FLAG_OUTPUT);
 
-  Reader input = {
-      .reader = io_stdin,
-      .freeable = false,
-  };
+  IoReader input = io_stdin;
+  IoWriter output = io_stdout;
 
   IoReader reader = {};
+  IoWriterCloser writer = {};
 
-  if (input_flag) {
-    const Option(IoReader) tmp = file_reader_new(input_flag->value.str.ptr, true);
-    if (option_is_none(tmp)) {
-      ssl_log_warn("ft_ssl: base64: unable to open input file\n");
-      exit_code = 1;
-      goto done;
-    }
-
-    input = (Reader){tmp.v, true};
-  }
-
-  if (op != OP_DECODE) {
-    ssl_log_err("operation not supported");
+  const Option(IoReader) oreader = base64_reader(&input, op, input_flag);
+  if (option_is_none(oreader)) {
     exit_code = 1;
     goto done;
   }
 
-  const Option(IoReader) b64 = b64_reader_new(&input.reader, true);
-  if (option_is_none(b64)) {
-    exit_code = FSSL_ERR_OUT_OF_MEMORY;
+  reader = oreader.v;
+
+  const Option(IoWriterCloser) owriter = base64_writer(&output, op, output_flag);
+  if (option_is_none(owriter)) {
+    exit_code = 1;
     goto done;
   }
 
-  reader = b64.v;
+  writer = owriter.v;
 
-  uint8_t buffer[2048] = {};
-  while (true) {
-    const ssize_t r = io_reader_read(&reader, buffer, sizeof(buffer));
-    if (r < 0) {
-      exit_code = 1;
-      goto done;
-    }
-    if (r == 0)
-      break;
-    write(STDOUT_FILENO, buffer, r);
-  }
+  if (io_copy(&reader, (IoWriter*)&writer) < 0)
+    exit_code = 1;
 
 done:
-  if (reader.instance)
-    io_reader_deinit(&reader);
-  if (input.freeable)
-    io_reader_deinit(&input.reader);
+  io_writer_close(&writer);
+
+  io_reader_deinit(&reader);
+  io_writer_deinit((IoWriter*)&writer);
+
   return exit_code;
 }

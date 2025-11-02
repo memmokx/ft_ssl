@@ -71,7 +71,7 @@ ifdef DEBUG
 	CFLAGS += -g
 endif
 ifdef SANITIZE
-	CFLAGS += -g -fsanitize=address
+	CFLAGS += -g -fsanitize=address,undefined,leak
 endif
 
 
