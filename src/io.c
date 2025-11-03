@@ -131,13 +131,15 @@ static ssize_t b64_decode_chunk(Base64Reader* ctx) {
 }
 
 /*!
- * @param ctx The base64 reader context.
+ * @param ptr The base64 reader context.
  * @param buf The output buffer to write the decoded read_bytes.
  * @param n The capacity of the output buffer.
  * @return The number of bytes it has written in buf.
  */
-static ssize_t b64_reader_read(Base64Reader* ctx, uint8_t* buf, const size_t n) {
-  if (!ctx || !buf) {
+static ssize_t b64_reader_read(void* ptr, uint8_t* buf, const size_t n) {
+  Base64Reader* ctx = ptr;
+
+  if (!ptr || !buf) {
     return -1;
   }
 
@@ -168,21 +170,27 @@ static ssize_t b64_reader_read(Base64Reader* ctx, uint8_t* buf, const size_t n) 
   return (ssize_t)w;
 }
 
-static void b64_reader_reset(Base64Reader* ctx) {
+static void b64_reader_reset(void* ptr) {
+  if (!ptr)
+    return;
+
+  Base64Reader* ctx = ptr;
   IoReader* inner = ctx->inner;
 
   *ctx = (Base64Reader){};
   ctx->inner = inner;
 }
 
-static void b64_reader_deinit(Base64Reader** ctx) {
-  if (!ctx || !*ctx)
+static void b64_reader_deinit(void** ptr) {
+  if (!ptr || !*ptr)
     return;
 
-  io_reader_deinit((*ctx)->inner);
-  **ctx = (Base64Reader){};
-  free(*ctx);
-  *ctx = nullptr;
+  Base64Reader* ctx = *ptr;
+
+  io_reader_deinit(ctx->inner);
+  *ctx = (Base64Reader){};
+  free(ctx);
+  *ptr = nullptr;
 }
 
 Option(IoReader) b64_reader_new(IoReader* reader, const bool ignore_nl) {
@@ -198,9 +206,9 @@ Option(IoReader) b64_reader_new(IoReader* reader, const bool ignore_nl) {
 
   const IoReader r = {
       .instance = instance,
-      .read = (reader_read_fn)b64_reader_read,
-      .reset = (reader_reset_fn)b64_reader_reset,
-      .deinit = (reader_deinit_fn)b64_reader_deinit,
+      .read = b64_reader_read,
+      .reset = b64_reader_reset,
+      .deinit = b64_reader_deinit,
   };
 
   return (Option(IoReader))Some(r);
@@ -208,7 +216,9 @@ Option(IoReader) b64_reader_new(IoReader* reader, const bool ignore_nl) {
 
 // --- File reader
 
-static ssize_t file_reader_read(FileReader* ctx, uint8_t* buf, const size_t n) {
+static ssize_t file_reader_read(void* ptr, uint8_t* buf, const size_t n) {
+  FileReader* ctx = ptr;
+
   if (!ctx || !buf)
     return -1;
 
@@ -218,19 +228,19 @@ static ssize_t file_reader_read(FileReader* ctx, uint8_t* buf, const size_t n) {
   return result;
 }
 
-static void file_reader_reset(FileReader* ctx) {
+static void file_reader_reset(void* ctx) {
   (void)ctx;
 }
 
-static void file_reader_deinit(FileReader** ctx) {
-  if (!ctx || !*ctx)
+static void file_reader_deinit(void** ptr) {
+  if (!ptr || !*ptr)
     return;
 
-  FileReader* instance = *ctx;
+  FileReader* instance = *ptr;
   if (instance->close)
     close(instance->fd);
   free(instance);
-  *ctx = nullptr;
+  *ptr = nullptr;
 }
 
 static void nil_reader_deinit(void** ctx) {
@@ -257,9 +267,9 @@ Option(IoReader) file_reader_new(const char* file, const bool close_on_deinit) {
 
   const IoReader r = {
       .instance = instance,
-      .read = (reader_read_fn)file_reader_read,
-      .reset = (reader_reset_fn)file_reader_reset,
-      .deinit = (reader_deinit_fn)file_reader_deinit,
+      .read = file_reader_read,
+      .reset = file_reader_reset,
+      .deinit = file_reader_deinit,
   };
 
   return (Option(IoReader))Some(r);
@@ -267,14 +277,16 @@ Option(IoReader) file_reader_new(const char* file, const bool close_on_deinit) {
 
 const IoReader io_stdin = {
     .instance = &(FileReader){.fd = STDIN_FILENO, .close = false},
-    .read = (reader_read_fn)file_reader_read,
-    .reset = (reader_reset_fn)file_reader_reset,
-    .deinit = (reader_deinit_fn)nil_reader_deinit,
+    .read = file_reader_read,
+    .reset = file_reader_reset,
+    .deinit = nil_reader_deinit,
 };
 
 // --- Base64 writer
 
-static ssize_t b64_writer_write(Base64Writer* ctx, const uint8_t* buf, size_t n) {
+static ssize_t b64_writer_write(void* ptr, const uint8_t* buf, size_t n) {
+  Base64Writer* ctx = ptr;
+
   if (!ctx || !buf)
     return -1;
 
@@ -342,7 +354,9 @@ done:
   return (ssize_t)w;
 }
 
-static void b64_writer_reset(Base64Writer* ctx) {
+static void b64_writer_reset(void* ptr) {
+  Base64Writer* ctx = ptr;
+
   if (!ctx)
     return;
 
@@ -350,17 +364,21 @@ static void b64_writer_reset(Base64Writer* ctx) {
   *ctx = (Base64Writer){.inner = inner};
 }
 
-static void b64_writer_deinit(Base64Writer** ctx) {
-  if (!ctx || !*ctx)
+static void b64_writer_deinit(void** ptr) {
+  if (!ptr || !*ptr)
     return;
 
-  io_writer_deinit((*ctx)->inner);
-  **ctx = (Base64Writer){};
-  free(*ctx);
-  *ctx = nullptr;
+  Base64Writer* ctx = *ptr;
+
+  io_writer_deinit(ctx->inner);
+  *ctx = (Base64Writer){};
+  free(ctx);
+  *ptr = nullptr;
 }
 
-static void b64_writer_close(Base64Writer* ctx) {
+static void b64_writer_close(void* ptr) {
+  Base64Writer* ctx = ptr;
+
   if (!ctx)
     return;
 
@@ -389,20 +407,20 @@ Option(IoWriterCloser) b64_writer_new(IoWriter* inner) {
 
   const IoWriter wr = {
       .instance = instance,
-      .write = (writer_write_fn)b64_writer_write,
-      .reset = (writer_reset_fn)b64_writer_reset,
-      .deinit = (writer_deinit_fn)b64_writer_deinit,
+      .write = b64_writer_write,
+      .reset = b64_writer_reset,
+      .deinit = b64_writer_deinit,
   };
 
   return (Option(IoWriterCloser))Some(((IoWriterCloser){
       .W = wr,
-      .close = (writer_close_fn)b64_writer_close,
+      .close = b64_writer_close,
   }));
 }
 
 // --- IoWriter utilities
 
-static void nil_writer_close_fn(const void* ctx) {
+static void nil_writer_close_fn(void* ctx) {
   (void)ctx;
 }
 
@@ -413,13 +431,15 @@ static void nil_writer_deinit_fn(void** ctx) {
 IoWriterCloser io_writer_closer_from(const IoWriter writer) {
   return (IoWriterCloser){
       .W = writer,
-      .close = (writer_close_fn)nil_writer_close_fn,
+      .close = nil_writer_close_fn,
   };
 }
 
 // --- File Writer
 
-static ssize_t file_writer_write(FileWriter* ctx, const uint8_t* buf, size_t n) {
+static ssize_t file_writer_write(void* ptr, const uint8_t* buf, size_t n) {
+  FileWriter* ctx = ptr;
+
   if (!ctx || !buf)
     return -1;
 
@@ -432,19 +452,19 @@ static ssize_t file_writer_write(FileWriter* ctx, const uint8_t* buf, size_t n) 
   return result;
 }
 
-static void file_writer_reset(const FileWriter* ctx) {
+static void file_writer_reset(void* ctx) {
   (void)ctx;
 }
 
-static void file_writer_deinit(FileWriter** ctx) {
-  if (!ctx || !*ctx)
+static void file_writer_deinit(void** ptr) {
+  if (!ptr || !*ptr)
     return;
 
-  FileWriter* w = *ctx;
+  FileWriter* w = *ptr;
   if (w->close)
     close(w->fd);
   free(w);
-  *ctx = nullptr;
+  *ptr = nullptr;
 }
 
 Option(IoWriter)
@@ -466,17 +486,17 @@ Option(IoWriter)
 
   return (Option(IoWriter))Some(((IoWriter){
       .instance = instance,
-      .write = (writer_write_fn)file_writer_write,
-      .reset = (writer_reset_fn)file_writer_reset,
-      .deinit = (writer_deinit_fn)file_writer_deinit,
+      .write = file_writer_write,
+      .reset = file_writer_reset,
+      .deinit = file_writer_deinit,
   }));
 }
 
 const IoWriter io_stdout = {
     .instance = &(FileWriter){.fd = STDOUT_FILENO, .close = false},
-    .write = (writer_write_fn)file_writer_write,
-    .reset = (writer_reset_fn)file_writer_reset,
-    .deinit = (writer_deinit_fn)nil_writer_deinit_fn,
+    .write = file_writer_write,
+    .reset = file_writer_reset,
+    .deinit = nil_writer_deinit_fn,
 };
 
 ssize_t io_copy(IoReader* reader, IoWriter* writer) {
