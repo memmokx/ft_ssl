@@ -1,7 +1,8 @@
 NAME = ft_ssl
-CC = cc
+CC ?= cc
 
-CFLAGS = -Wall -Wextra -Werror -std=c23 -fPIC -lbsd
+CFLAGS = -Wall -Wextra -Werror -std=c23 -fPIC
+LIBS = -lbsd
 
 FSSL_CLI_FEATURES = 0
 
@@ -78,7 +79,7 @@ all: $(NAME)
 lib: $(LIBFSSL)
 
 $(TESTS_BIN): $(TEST_OBJ) lib
-	$(CC) $(CFLAGS) $(TEST_OBJ) $(LIBFSSL) -o $@ -lcriterion -Wl,-rpath=$(PWD) $(INCLUDE)
+	$(CC) $(CFLAGS) $(TEST_OBJ) $(LIBFSSL) -o $@ $(LIBS) -lcriterion -Wl,-rpath=$(PWD) $(INCLUDE)
 
 test: $(TESTS_BIN)
 	@echo "$(COLOUR_GREEN)Running unit tests$(COLOUR_END)"
@@ -88,11 +89,11 @@ lit-test: $(NAME)
 	@litcheck lit run -v --path="$(PWD)" tests/cli/*
 
 $(LIBFSSL): $(LIBFSSL_OBJ) $(LIBFT)
-	$(CC) -shared $(CFLAGS) $(LIBFSSL_OBJ) $(LIBFT) -o $@ $(INCLUDE)
+	$(CC) -shared $(CFLAGS) $(LIBFSSL_OBJ) $(LIBFT) -o $@ $(LIBS) $(INCLUDE)
 	@echo "$(COLOUR_GREEN)Compiled:$(COLOUR_END) $(BOLD)$@$(COLOUR_END)"
 
 $(NAME): $(OBJ) $(LIBFT)
-	$(CC) $(CFLAGS) $(OBJ) $(LIBFT) -o $@ $(INCLUDE)
+	$(CC) $(CFLAGS) $(OBJ) $(LIBFT) -o $@ $(LIBS) $(INCLUDE)
 	@echo "$(COLOUR_GREEN)Compiled:$(COLOUR_END) $(BOLD)$@$(COLOUR_END)"
 
 %.o: %.c

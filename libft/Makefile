@@ -54,7 +54,7 @@ SRC = string/ft_strlen.c \
 
 OBJ = $(SRC:.c=.o)
 
-CC				= cc
+CC				?= cc
 CFLAGS			= -Wall -Werror -Wextra
 
 COLOUR_GREEN=$(shell tput setaf 2)
