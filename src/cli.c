@@ -44,7 +44,7 @@ uint8_t g_failed = 0;
 
 #define FOREACH_CIPHER_COMMAND(V)                                                  \
   V("base64", {}, B64_COMMAND_FLAGS, base64_command_impl)                          \
-  V("des", cdata(cipher, cipherdata(fssl_cipher_des, NONE)), DES_COMMAND_FLAGS,    \
+  V("des", cdata(cipher, cipherdata(fssl_cipher_des, ECB)), DES_COMMAND_FLAGS,     \
     cipher_command_impl)                                                           \
   V("des-ecb", cdata(cipher, cipherdata(fssl_cipher_des, ECB)), DES_COMMAND_FLAGS, \
     cipher_command_impl)                                                           \

@@ -82,8 +82,8 @@ REGISTER_OPTION(uint16_t);
     }                                                                          \
   } while (false)
 
-#define SSL_LEVEL_WARN "warn"
-#define SSL_LEVEL_ERROR "error"
+#define SSL_LEVEL_WARN  "warn     "
+#define SSL_LEVEL_ERROR "error    "
 
 #define ssl_log(level, fmt, ...) \
   ft_fprintf(2, "%s   %s:%d " fmt, level, __FILE__, __LINE__, ## __VA_ARGS__)

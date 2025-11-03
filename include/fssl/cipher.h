@@ -5,14 +5,13 @@
 #include <fssl/error.h>
 
 typedef enum {
-  NONE,
   ECB,
   CBC,
   CTR,
   CFB,
   OFB,
   PCBC,
-} fssl_cipher_mode_t;
+} fssl_block_cipher_mode_t;
 
 /*!
  * @brief The signature for cipher block functions. This function will be called

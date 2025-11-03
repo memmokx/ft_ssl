@@ -52,7 +52,7 @@ typedef union {
   fssl_hash_t hash;
   struct {
     fssl_block_cipher_t cipher;
-    fssl_cipher_mode_t mode;
+    fssl_block_cipher_mode_t mode;
   } cipher;
 } cli_command_data;
 

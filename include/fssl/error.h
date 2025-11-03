@@ -8,6 +8,7 @@
   V(FSSL_ERR_BUFFER_TOO_SMALL, "Buffer is too small.")                       \
   V(FSSL_ERR_RAND_FAILURE, "Unable to fetch randomness.")                    \
   V(FSSL_ERR_INTERNAL, "Internal Error.")                                    \
+  V(FSSL_ERR_SHORT_READ, "Unable to read enough bytes.")                                    \
   V(FSSL_ERR_OUT_OF_MEMORY, "Out of memory.")
 
 typedef enum {
