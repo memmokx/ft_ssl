@@ -1,11 +1,11 @@
 #include <libft/strconv.h>
 
-t_string	ft_itoa(int n)
+t_string	ft_itoa(int64_t n)
 {
 	return (ft_itoa_base(n, DEC_BASE, 10));
 }
 
-t_string	ft_itoa_base(int n, const char *base, int radix)
+t_string	ft_itoa_base(int64_t n, const char *base, int radix)
 {
 	t_string	str;
 

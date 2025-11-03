@@ -1,6 +1,6 @@
 #include "ft_printf.h"
 
-int	printf_convert_int(t_string *buffer, int n)
+int	printf_convert_int(t_string *buffer, int64_t n)
 {
 	t_string	tmp;
 
@@ -10,7 +10,7 @@ int	printf_convert_int(t_string *buffer, int n)
 	return (string_append_string(buffer, &tmp, true));
 }
 
-int	printf_convert_unsigned(t_string *buffer, unsigned int n)
+int	printf_convert_unsigned(t_string *buffer, uint64_t n)
 {
 	t_string	tmp;
 
