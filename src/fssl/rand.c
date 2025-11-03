@@ -3,6 +3,16 @@
 
 #include <sys/random.h>
 
+fssl_error_t fssl_rand_read(uint8_t* buf, const size_t n) {
+  const ssize_t r = getrandom(buf, n, 0);
+  if (r < 0)
+    return FSSL_ERR_RAND_FAILURE;
+  if (r != (ssize_t)n)
+    return FSSL_ERR_SHORT_READ;
+
+  return FSSL_SUCCESS;
+}
+
 uint8_t* fssl_rand_bytes(const size_t n, fssl_error_t* err) {
   // TODO: temporary implementation
   uint8_t* buffer = malloc(n);
