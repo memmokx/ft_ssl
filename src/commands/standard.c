@@ -1,7 +1,5 @@
 #include <commands.h>
-
-#include <fcntl.h>
-#include "io.h"
+#include <io.h>
 
 typedef enum {
   OP_ENCODE,
@@ -36,22 +34,23 @@ static Operation command_operation(cli_flags_t* flags) {
 static Option(IoReader)
     base64_reader(IoReader* parent, const Operation op, const cli_flag_t* input_flag) {
   if (input_flag) {
-    const Option(IoReader) tmp = file_reader_new(input_flag->value.str.ptr, true);
+    const string* file = &input_flag->value.str;
+    auto const tmp = file_reader_new(file->ptr, true);
     option_let_some_else(tmp, *parent) else {
-      ssl_log_warn("ft_ssl: base64: unable to open input file\n");
+      logerr("Unable to open input file\n");
       goto err;
     }
   }
 
   // We need to read base64 data, so wrap the parent with a base64 reader.
   if (op == OP_DECODE) {
-    const Option(IoReader) b64 = b64_reader_new(parent, true);
-    if (option_is_none(b64)) {
-      ssl_log_warn("ft_ssl: base64: out of memory\n");
+    auto const tmp = b64_reader_new(parent, true);
+    if (option_is_none(tmp)) {
+      logerr("Out of memory\n");
       goto err;
     }
 
-    return b64;
+    return tmp;
   }
 
   return (Option(IoReader))Some(*parent);
@@ -62,22 +61,22 @@ err:
 static Option(IoWriterCloser)
     base64_writer(IoWriter* parent, const Operation op, const cli_flag_t* output_flag) {
   if (output_flag) {
-    const Option(IoWriter) tmp =
-        file_writer_new(output_flag->value.str.ptr, true, O_CREAT);
+    const string* file = &output_flag->value.str;
+    auto const tmp = file_writer_new(file->ptr, true, O_CREAT);
     option_let_some_else(tmp, *parent) else {
-      ssl_log_warn("ft_ssl: base64: unable to open input file\n");
+      logerr("Unable to open output file\n");
       goto err;
     }
   }
 
   if (op == OP_ENCODE) {
-    const Option(IoWriterCloser) b64 = b64_writer_new(parent);
-    if (option_is_none(b64)) {
-      ssl_log_warn("ft_ssl: base64: out of memory\n");
+    auto const tmp = b64_writer_new(parent);
+    if (option_is_none(tmp)) {
+      logerr("Out of memory\n");
       goto err;
     }
 
-    return b64;
+    return tmp;
   }
 
   return (Option(IoWriterCloser))Some(io_writer_closer_from(*parent));
@@ -86,14 +85,11 @@ err:
 }
 
 int base64_command_impl(string command,
-                        const cli_command_data* data,
+                        const cli_command_data*,
                         cli_flags_t* flags,
-                        int argc,
-                        char** argv) {
-  (void)command;
-  (void)data;
-  (void)argc;
-  (void)argv;
+                        int,
+                        char**) {
+  SSL_COMMAND_PROLOGUE(command);
 
   int exit_code = 0;
 
