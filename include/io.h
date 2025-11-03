@@ -2,6 +2,7 @@
 #define SSL_IO_H
 
 #include "common.h"
+#include <fcntl.h>
 
 typedef ssize_t (*reader_read_fn)(void* ctx, uint8_t* buf, size_t n);
 typedef void (*reader_reset_fn)(void* ctx);

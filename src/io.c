@@ -16,11 +16,13 @@ ssize_t io_reader_read(const IoReader* reader, uint8_t* buf, size_t n) {
 }
 
 void io_reader_reset(const IoReader* reader) {
-  reader->reset(reader->instance);
+  if (reader && reader->reset)
+    reader->reset(reader->instance);
 }
 
 void io_reader_deinit(IoReader* reader) {
-  reader->deinit(&reader->instance);
+  if (reader && reader->deinit)
+    reader->deinit(&reader->instance);
 }
 
 ssize_t io_writer_write(const IoWriter* writer, const uint8_t* buf, size_t n) {
@@ -31,11 +33,13 @@ void io_writer_reset(const IoWriter* writer) {
   writer->reset(writer->instance);
 }
 void io_writer_deinit(IoWriter* writer) {
-  writer->deinit(&writer->instance);
+  if (writer && writer->deinit)
+    writer->deinit(&writer->instance);
 }
 
 void io_writer_close(const IoWriterCloser* writer) {
-  writer->close(writer->W.instance);
+  if (writer && writer->close)
+    writer->close(writer->W.instance);
 }
 
 // --- Base64 reader
@@ -116,7 +120,7 @@ static ssize_t b64_decode_chunk(Base64Reader* ctx) {
         fssl_base64_decode((const char*)ctx->input + ctx->iptr, n,
                            ctx->output + ctx->olen, ocap, &written);
     if (fssl_haserr(err)) {
-      ssl_log_warn("info: n:%d, remaining:%d, olen:%d, iptr:%d\n", n, remaining,
+      ssl_log_warn("info: n:%lu, remaining:%lu, olen:%lu, iptr:%lu\n", n, remaining,
                    ctx->olen, ctx->iptr);
       ssl_log_warn("b64: error decoding: %s\n", fssl_error_string(err));
       return -1;
@@ -255,7 +259,7 @@ Option(IoReader) file_reader_new(const char* file, const bool close_on_deinit) {
 
   const int fd = open(file, O_RDONLY);
   if (fd < 0) {
-    ssl_log_warn("file_reader: open(%s): %s\n", strerror(errno));
+    ssl_log_warn("file_reader: open(%s): %s\n", file, strerror(errno));
     free(instance);
     return None(IoReader);
   }
@@ -520,7 +524,7 @@ ssize_t io_copy(IoReader* reader, IoWriter* writer) {
       break;
 
     if (r != w) {
-      ssl_log_warn("w != r. {w: %d, r: %d}\n", w, r);
+      ssl_log_warn("w != r. {w: %lu, r: %lu}\n", w, r);
       break;
     }
 
