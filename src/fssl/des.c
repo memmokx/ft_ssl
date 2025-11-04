@@ -53,7 +53,9 @@ static fssl_force_inline uint32_t rol28(uint32_t v, size_t r) {
   return ((v << r) | (v >> (28 - r))) & 0x0fffffff;
 }
 
-fssl_error_t fssl_des_init(fssl_des_ctx* ctx, const uint8_t* key) {
+fssl_error_t fssl_des_init(void* ptr, const uint8_t* key) {
+  fssl_des_ctx* ctx = ptr;
+
   if (ctx == nullptr || key == nullptr)
     return FSSL_ERR_INVALID_ARGUMENT;
 
@@ -78,13 +80,6 @@ fssl_error_t fssl_des_init(fssl_des_ctx* ctx, const uint8_t* key) {
   }
 
   return FSSL_SUCCESS;
-}
-
-void fssl_des_deinit(fssl_des_ctx* ctx) {
-  if (ctx == nullptr)
-    return;
-
-  *ctx = (fssl_des_ctx){};
 }
 
 constexpr uint8_t sboxes[8][64] = {
@@ -184,7 +179,9 @@ static fssl_force_inline uint32_t feistel(const uint32_t x, uint64_t k) {
   return (uint32_t)pbox(result, Q, sizeof(Q), 32);
 }
 
-void fssl_des_encrypt_block(const fssl_des_ctx* ctx, const uint8_t* in, uint8_t* out) {
+void fssl_des_encrypt_block(void* ptr, const uint8_t* in, uint8_t* out) {
+  const fssl_des_ctx* ctx = ptr;
+
   // Initial permutation
   const uint64_t block = pbox(fssl_be_read_u64(in), ip, sizeof(ip), 64);
 
@@ -205,7 +202,9 @@ void fssl_des_encrypt_block(const fssl_des_ctx* ctx, const uint8_t* in, uint8_t*
   fssl_be_write_u64(out, result);
 }
 
-void fssl_des_decrypt_block(fssl_des_ctx* ctx, const uint8_t* in, uint8_t* out) {
+void fssl_des_decrypt_block(void* ptr, const uint8_t* in, uint8_t* out) {
+  const fssl_des_ctx* ctx = ptr;
+
   // Initial permutation
   const uint64_t block = pbox(fssl_be_read_u64(in), ip, sizeof(ip), 64);
 
@@ -226,13 +225,15 @@ void fssl_des_decrypt_block(fssl_des_ctx* ctx, const uint8_t* in, uint8_t* out) 
   fssl_be_write_u64(out, result);
 }
 
-const fssl_block_cipher_t fssl_cipher_des = {
-    .ctx_size = sizeof(fssl_des_ctx),
+const fssl_cipher_desc_t fssl_cipher_des = {
+    .name = "des",
+
+    .type = CIPHER_BLOCK,
     .block_size = FSSL_DES_BLOCK_SIZE,
     .key_size = FSSL_DES_KEY_SIZE,
+    .ctx_size = sizeof(fssl_des_ctx),
 
-    .init_fn = (fssl_block_cipher_init_fn)fssl_des_init,
-    .deinit_fn = (fssl_block_cipher_deinit_fn)fssl_des_deinit,
-    .block_encrypt_fn = (fssl_block_cipher_encrypt_fn)fssl_des_encrypt_block,
-    .block_decrypt_fn = (fssl_block_cipher_decrypt_fn)fssl_des_decrypt_block,
+    .init = fssl_des_init,
+    .encrypt = fssl_des_encrypt_block,
+    .decrypt = fssl_des_decrypt_block,
 };

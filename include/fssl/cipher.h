@@ -5,72 +5,81 @@
 #include <fssl/error.h>
 
 typedef enum {
-  ECB,
-  CBC,
-  CTR,
-  CFB,
-  OFB,
-  PCBC,
-} fssl_block_cipher_mode_t;
+  CIPHER_MODE_ECB,
+  CIPHER_MODE_CBC,
+  CIPHER_MODE_CTR,
+  CIPHER_MODE_CFB,
+  CIPHER_MODE_OFB,
+  CIPHER_MODE_PCBC,
+  CIPHER_MODE_STREAM,
+} fssl_cipher_mode_t;
 
-/*!
- * @brief The signature for cipher block functions. This function will be called
- * on each block of data to encrypt.
- */
-typedef void (*fssl_block_cipher_encrypt_fn)(void* ctx, const uint8_t* in, uint8_t* out);
+typedef enum {
+  CIPHER_BLOCK,
+  CIPHER_STREAM,
+} fssl_cipher_type_t;
 
-/*!
- * @brief The signature for cipher block functions. This function will be called
- * on each block of data to decrypt.
- */
-typedef void (*fssl_block_cipher_decrypt_fn)(void* ctx, const uint8_t* in, uint8_t* out);
+typedef fssl_error_t (*fssl_cipher_init_fn)(void* ctx, const uint8_t* key);
+typedef void (*fssl_cipher_encrypt_fn)(void* ctx, const uint8_t* in, uint8_t* out);
+typedef void (*fssl_cipher_decrypt_fn)(void* ctx, const uint8_t* in, uint8_t* out);
 
-/*!
- * @brief The signature for block cipher initialization functions. This function
- * will be called once to initialize the cipher context with the given key.
- */
-typedef fssl_error_t (*fssl_block_cipher_init_fn)(void* ctx, const uint8_t* key);
-
-/*!
- * @brief The signature for block cipher de-initialization functions. This
- * function will be called once to release any resources allocated by the cipher
- * context.
- */
-typedef void (*fssl_block_cipher_deinit_fn)(void* ctx);
+typedef void (*fssl_cipher_stream_encrypt_fn)(void* ctx,
+                                              const uint8_t* in,
+                                              uint8_t* out,
+                                              size_t n);
+typedef void (*fssl_cipher_stream_decrypt_fn)(void* ctx,
+                                              const uint8_t* in,
+                                              uint8_t* out,
+                                              size_t n);
 
 typedef struct {
-  size_t ctx_size;
+  const char* name;
+  fssl_cipher_type_t type;
+
   size_t block_size;
   size_t key_size;
+  size_t ctx_size;
 
-  fssl_block_cipher_init_fn init_fn;
-  fssl_block_cipher_deinit_fn deinit_fn;
-  fssl_block_cipher_encrypt_fn block_encrypt_fn;
-  fssl_block_cipher_decrypt_fn block_decrypt_fn;
-} fssl_block_cipher_t;
+  fssl_cipher_init_fn init;
+  fssl_cipher_encrypt_fn encrypt;
+  fssl_cipher_decrypt_fn decrypt;
+  fssl_cipher_stream_encrypt_fn encrypt_stream;
+  fssl_cipher_stream_decrypt_fn decrypt_stream;
+} fssl_cipher_desc_t;
 
-/*!
- * @brief The signature for block mode functions.
- * @param cipher The cipher descriptor, used to encrypt/decrypt each block
- * @param ctx The cipher context.
- * @param in The input data to encrypt/decrypt.
- * @param in_size The size of the input data.
- * @param out The output buffer.
- * @param iv The Initialization Vector, as some Block modes require one.
- */
-typedef size_t (*fssl_block_mode_fn)(const fssl_block_cipher_t* cipher,
-                                     void* ctx,
-                                     const uint8_t* in,
-                                     size_t in_size,
-                                     uint8_t* out,
-                                     const fssl_slice_t* iv);
+typedef struct _fssl_cipher_s fssl_cipher_t;
 
-typedef struct {
-  fssl_slice_t iv;
-  fssl_block_cipher_t* cipher;
+typedef struct _fssl_cipher_s {
+  void* instance;
+  const fssl_cipher_desc_t* desc;
+  fssl_cipher_mode_t mode;
 
-  fssl_block_mode_fn encrypt_fn;
-  fssl_block_mode_fn decrypt_fn;
-} fssl_block_mode_t;
+  struct {
+    uint8_t data[FSSL_MAX_IV_SIZE];
+    size_t size;
+  } iv;
+
+  ssize_t (*encrypt)(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n);
+  ssize_t (*decrypt)(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n);
+} fssl_cipher_t;
+
+fssl_error_t fssl_cipher_new(fssl_cipher_t* cipher,
+                             const fssl_cipher_desc_t* desc,
+                             fssl_cipher_mode_t mode);
+
+fssl_error_t fssl_cipher_set_key(fssl_cipher_t* cipher, const uint8_t* key);
+fssl_error_t fssl_cipher_set_iv(fssl_cipher_t* cipher, const fssl_slice_t* iv);
+
+ssize_t fssl_cipher_encrypt(fssl_cipher_t* cipher,
+                            const uint8_t* in,
+                            uint8_t* out,
+                            size_t n);
+
+ssize_t fssl_cipher_decrypt(fssl_cipher_t* cipher,
+                            const uint8_t* in,
+                            uint8_t* out,
+                            size_t n);
+
+void fssl_cipher_deinit(fssl_cipher_t* cipher);
 
 #endif

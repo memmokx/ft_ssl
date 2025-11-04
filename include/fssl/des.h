@@ -10,9 +10,8 @@ typedef struct {
   uint64_t sk[16];
 } fssl_des_ctx;
 
-fssl_error_t fssl_des_init(fssl_des_ctx* ctx, const uint8_t* key);
-void fssl_des_deinit(fssl_des_ctx* ctx);
+fssl_error_t fssl_des_init(void* ctx, const uint8_t* key);
 
-extern const fssl_block_cipher_t fssl_cipher_des;
+extern const fssl_cipher_desc_t fssl_cipher_des;
 
 #endif

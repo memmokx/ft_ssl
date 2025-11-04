@@ -51,7 +51,7 @@ Test(fssl, des_encrypt_block) {
   uint8_t msg[FSSL_DES_BLOCK_SIZE] = {0b00000001, 0b00100011, 0b01000101,
                                       0b01100111, 0b10001001, 0b10101011,
                                       0b11001101, 0b11101111};
-  fssl_cipher_des.block_encrypt_fn(&ctx, msg, msg);
+  fssl_cipher_des.encrypt(&ctx, msg, msg);
 
   uint8_t expected[FSSL_DES_BLOCK_SIZE] = {0x85, 0xE8, 0x13, 0x54,
                                            0x0F, 0x0A, 0xB4, 0x05};
@@ -61,4 +61,15 @@ Test(fssl, des_encrypt_block) {
                  "Ciphertext %zu mismatch: got 0x%x, expected 0x%x", i, msg[i],
                  expected[i]);
   }
+}
+
+Test(fssl, des_encrypt_ecb) {
+  // const char msg[] = "Hello World !";
+  uint8_t key[FSSL_DES_KEY_SIZE] = {0x62, 0x4b, 0x8c, 0xe7, 0x5a, 0xa2, 0xa2, 0x49};
+
+  fssl_cipher_t c;
+  if (fssl_cipher_new(&c, (void*)&fssl_cipher_des, CIPHER_MODE_ECB) != FSSL_SUCCESS)
+    cr_assert(false, "fssl_cipher_new failed");
+  fssl_cipher_set_key(&c, key);
+  fssl_cipher_deinit(&c);
 }

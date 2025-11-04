@@ -16,7 +16,7 @@ FSSL_SRC = src/fssl/encoding.c \
 		src/fssl/sha1.c \
 		src/fssl/blake2s.c \
 		src/fssl/des.c \
-		src/fssl/block.c \
+		src/fssl/cipher.c \
 		src/fssl/error.c \
 		src/fssl/password.c \
 		src/fssl/kdf.c \
@@ -36,7 +36,6 @@ TEST_SRC = tests/fssl/test_md5.c \
  		tests/fssl/test_sha512.c \
  		tests/fssl/test_blake2.c \
  		tests/fssl/test_des.c \
- 		tests/fssl/test_kdf.c \
  		tests/fssl/test_base64.c
 
 

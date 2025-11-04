@@ -51,13 +51,13 @@ typedef struct {
     (p)[0] = (n) & 0xff;         \
   } while (false)
 
-#define fssl_le_read_u32(p)                                                  \
-  ((uint32_t)((p)[0]) | (uint32_t)((p)[1] << 8) | (uint32_t)((p)[2] << 16) | \
-   (uint32_t)((p)[3] << 24))
+#define fssl_le_read_u32(p)                                                      \
+  ((uint32_t)((p)[0]) | ((uint32_t)((p)[1]) << 8) | ((uint32_t)((p)[2]) << 16) | \
+   ((uint32_t)((p)[3]) << 24))
 
 #define fssl_be_read_u32(p)                                                  \
-  ((uint32_t)((p)[3]) | (uint32_t)((p)[2] << 8) | (uint32_t)((p)[1] << 16) | \
-   (uint32_t)((p)[0] << 24))
+  ((uint32_t)((p)[3]) | ((uint32_t)((p)[2]) << 8) | ((uint32_t)((p)[1]) << 16) | \
+   ((uint32_t)((p)[0]) << 24))
 
 #define fssl_be_read_u64(p)                                                      \
   ((uint64_t)((p)[7]) | ((uint64_t)((p)[6]) << 8) | ((uint64_t)((p)[5]) << 16) | \
@@ -132,5 +132,7 @@ typedef struct {
       (__ctx)->buffer_len += (__len);                                      \
     }                                                                      \
   } while (false)
+
+#define FSSL_MAX_IV_SIZE 32
 
 #endif
