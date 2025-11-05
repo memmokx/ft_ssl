@@ -42,6 +42,17 @@ void io_writer_close(const IoWriterCloser* writer) {
     writer->close(writer->W.instance);
 }
 
+#define IO_READER_RETARGET(_ptr, _len, _buf) \
+  do {                                       \
+    if (_ptr > 0 && _ptr < _len) {           \
+      const size_t _rest = _len - _ptr;      \
+      ft_memmove(_buf, _buf + _ptr, _rest);  \
+      _len = _rest;                          \
+      _ptr = 0;                              \
+    } else if (_ptr >= _len)                 \
+      _ptr = _len = 0;                       \
+  } while (false)
+
 // --- Base64 reader
 
 static ssize_t b64_read_more(Base64Reader* ctx) {
@@ -49,13 +60,7 @@ static ssize_t b64_read_more(Base64Reader* ctx) {
     return 0;
 
   // Check that there's still data in the input buffer
-  if (ctx->iptr > 0 && ctx->iptr < ctx->ilen) {
-    const size_t rest = ctx->ilen - ctx->iptr;
-    ft_memmove(ctx->input, ctx->input + ctx->iptr, rest);
-    ctx->ilen -= rest;
-    ctx->iptr -= rest;
-  } else if (ctx->iptr >= ctx->ilen)
-    ctx->iptr = ctx->ilen = 0;
+  IO_READER_RETARGET(ctx->iptr, ctx->ilen, ctx->input);
 
   const size_t n = sizeof(ctx->input) - ctx->ilen;
   // There still space available in the input buffer. Fill it
@@ -437,6 +442,209 @@ IoWriterCloser io_writer_closer_from(const IoWriter writer) {
       .W = writer,
       .close = nil_writer_close_fn,
   };
+}
+
+// --- Encryption related Io
+
+#define IO_ENC_BUFFER_SIZE 2048
+
+typedef struct {
+  IoReader* inner;
+  fssl_cipher_t* cipher;
+
+  bool eof;
+
+  // Decryption buffer
+  uint8_t dbuf[IO_ENC_BUFFER_SIZE + FSSL_MAX_BLOCK_SIZE];
+  size_t dbuflen;
+  size_t dbufptr;
+
+  // Ciphertext buffer
+  uint8_t buf[IO_ENC_BUFFER_SIZE];
+  size_t buflen;
+  size_t bufptr;
+
+  // TODO: implement this, CTR mode can be streamable
+  bool streamable;
+
+  // Are we holding the last block
+  bool holding;
+  // The last block we decrypted
+  uint8_t holdbuf[FSSL_MAX_BLOCK_SIZE];
+
+  size_t block_size;
+} CipherReader;
+
+/*!
+ * @brief Read bytes from the underlying reader to fill the internal buffer.
+ */
+static ssize_t cipher_reader_fetch_more(CipherReader* ctx) {
+  if (ctx->eof)
+    return 0;
+
+  IO_READER_RETARGET(ctx->bufptr, ctx->buflen, ctx->buf);
+
+  const size_t before = ctx->buflen;
+
+  while (!ctx->eof && (sizeof(ctx->buf) - ctx->buflen) > 0) {
+    const size_t n = sizeof(ctx->buf) - ctx->buflen;
+    const ssize_t r = io_reader_read(ctx->inner, ctx->buf + ctx->buflen, n);
+    if (r < 0)
+      return -1;
+    if (r == 0)
+      ctx->eof = true;
+    ctx->buflen += r;
+  }
+
+  return (ssize_t)(ctx->buflen - before);
+}
+
+static ssize_t cipher_reader_read(void* p, uint8_t* buf, const size_t n) {
+  CipherReader* ctx = p;
+  size_t w = 0;
+
+  IO_READER_RETARGET(ctx->dbufptr, ctx->dbuflen, ctx->dbuf);
+
+  if (ctx->dbuflen - ctx->dbufptr > 0) {
+    const size_t tomove = min(ctx->dbuflen - ctx->dbufptr, n);
+    ft_memcpy(buf, ctx->dbuf + ctx->dbufptr, tomove);
+    ctx->dbufptr += tomove;
+    w += tomove;
+  }
+
+  while (w < n) {
+    if (ctx->dbufptr >= ctx->dbuflen)
+      ctx->dbufptr = ctx->dbuflen = 0;
+
+    // We want to be able to decrypt at least a block
+    // TODO: streamable: if we are using a streamable cipher this is useless.
+    size_t remaining;
+    for (remaining = ctx->buflen - ctx->bufptr; remaining < ctx->block_size;
+         remaining = ctx->buflen - ctx->bufptr) {
+      const ssize_t r = cipher_reader_fetch_more(ctx);
+      if (r < 0)
+        return -1;
+      if (r == 0)
+        goto out;
+    }
+
+    // We have at least a block to decrypt
+    const size_t todecrypt = remaining / ctx->block_size * ctx->block_size;
+
+    ssl_assert(todecrypt % ctx->block_size == 0);
+    ssl_assert(todecrypt <= sizeof(ctx->dbuf) - sizeof(ctx->holdbuf));
+    ssl_assert(ctx->dbufptr == 0);
+    ssl_assert(ctx->dbuflen == 0);
+
+    const ssize_t r =
+        fssl_cipher_decrypt(ctx->cipher, ctx->buf + ctx->bufptr,
+                            ctx->dbuf + (ctx->holding ? ctx->block_size : 0),
+                            todecrypt);
+    if (r < 0) {
+      ssl_log_err("cipher_reader: decrypt: error decrypting (n=%lu)\n", todecrypt);
+      return -1;
+    }
+
+    ctx->bufptr += (size_t)r;
+    ctx->dbuflen += (size_t)r;  // The number of bytes we decrypted
+
+    // We successfully decrypted, so the buffer on hold is safe now
+    if (ctx->holding) {
+      ft_memcpy(ctx->dbuf, ctx->holdbuf, ctx->block_size);
+      ctx->dbuflen += ctx->block_size;
+      ctx->holding = false;
+    }
+
+      ssl_assert(ctx->holding == false);
+      ctx->dbuflen -= ctx->block_size;
+      ft_memcpy(ctx->holdbuf, ctx->dbuf + ctx->dbuflen, ctx->block_size);
+      ctx->holding = true;
+
+    if (ctx->dbuflen == 0)
+      continue;
+
+    const size_t towrite = min(ctx->dbuflen, n - w);
+    ft_memcpy(buf + w, ctx->dbuf, towrite);
+    ctx->dbufptr += towrite;
+    w += towrite;
+  }
+
+out:
+  if (ctx->holding && ctx->eof) {
+    size_t padded = 0;
+    if (fssl_pkcs5_unpad(ctx->holdbuf, ctx->block_size, ctx->block_size, &padded) !=
+        FSSL_SUCCESS) {
+      ssl_log_err("cipher_reader: bad padding\n");
+      return -1;
+    }
+
+    ft_memcpy(ctx->dbuf + ctx->dbuflen, ctx->holdbuf, ctx->block_size - padded);
+    ctx->dbuflen += (ctx->block_size - padded);
+    ctx->holding = false;
+  }
+
+  if (w < n && ctx->dbuflen - ctx->dbufptr > 0) {
+    const size_t towrite = min(ctx->dbuflen - ctx->dbufptr, n - w);
+    ft_memcpy(buf + w, ctx->dbuf + ctx->dbufptr, towrite);
+    ctx->dbufptr += towrite;
+    w += towrite;
+  }
+
+  return (ssize_t)w;
+}
+
+static void cipher_reader_reset(void* p) {
+  CipherReader* ctx = p;
+  if (!ctx)
+    return;
+
+  auto const c = ctx->cipher;
+  auto const inner = ctx->inner;
+  auto const block_size = ctx->block_size;
+
+  *ctx = (CipherReader){.inner = inner, .cipher = c, .block_size = block_size};
+}
+
+static void cipher_reader_deinit(void** p) {
+  if (!p || !*p)
+    return;
+
+  CipherReader* ctx = *p;
+  io_reader_deinit(ctx->inner);
+  *ctx = (CipherReader){};
+  free(ctx);
+  *p = nullptr;
+}
+
+/*!
+ * @brief Create a new CipherReader that allows decryption of the data read from
+ * the parent.
+ *
+ * This object DOES NOT own the cipher object, it will not be freed on _deinit.
+ * io_reader_reset calls WILL call fssl_cipher_reset.
+ * @param parent The parent IoReader, data will be read from it and then decrypted.
+ * @param cipher The cipher object, it will be used to decrypt the read data.
+ * @return None if memory allocation fail. On success: new CipherReader object.
+ */
+Option(IoReader) cipher_reader_new(IoReader* parent, fssl_cipher_t* cipher) {
+  CipherReader* instance = malloc(sizeof(CipherReader));
+  if (!instance)
+    return None(IoReader);
+
+  *instance = (CipherReader){
+      .inner = parent,
+      .cipher = cipher,
+      .block_size = fssl_cipher_block_size(cipher),
+  };
+
+  const IoReader r = {
+      instance,
+      cipher_reader_read,
+      cipher_reader_reset,
+      cipher_reader_deinit,
+  };
+
+  return (Option(IoReader))Some(r);
 }
 
 // --- File Writer

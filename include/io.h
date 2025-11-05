@@ -1,8 +1,8 @@
 #ifndef SSL_IO_H
 #define SSL_IO_H
 
-#include "common.h"
 #include <fcntl.h>
+#include "common.h"
 
 typedef ssize_t (*reader_read_fn)(void* ctx, uint8_t* buf, size_t n);
 typedef void (*reader_reset_fn)(void* ctx);
@@ -83,14 +83,25 @@ void io_writer_reset(const IoWriter* writer);
 void io_writer_deinit(IoWriter* writer);
 void io_writer_close(const IoWriterCloser* writer);
 
-Option(IoReader) b64_reader_new(IoReader* reader, bool ignore_nl);
+Option(IoReader) b64_reader_new(IoReader* parent, bool ignore_nl);
 Option(IoReader) file_reader_new(const char* file, bool close_on_deinit);
+/*!
+ * @brief Create a new CipherReader that allows decryption of the data read from
+ * the parent.
+ *
+ * This object DOES NOT own the cipher object, it will not be freed on _deinit.
+ * io_reader_reset calls WILL call fssl_cipher_reset.
+ * @param parent The parent IoReader, data will be read from it and then decrypted.
+ * @param cipher The cipher object, it will be used to decrypt the read data.
+ * @return None if memory allocation fail. On success: new CipherReader object.
+ */
+Option(IoReader) cipher_reader_new(IoReader* parent, fssl_cipher_t* cipher);
 
 Option(IoWriterCloser) b64_writer_new(IoWriter* inner);
 Option(IoWriter) file_writer_new(const char* file, bool close_on_deinit, int oflag);
 
 IoWriterCloser io_writer_closer_from(IoWriter writer);
 
-ssize_t io_copy(IoReader *reader, IoWriter *writer);
+ssize_t io_copy(IoReader* reader, IoWriter* writer);
 
 #endif
