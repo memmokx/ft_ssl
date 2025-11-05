@@ -205,6 +205,10 @@ void fssl_des_encrypt_block(void* ptr, const uint8_t* in, uint8_t* out) {
 void fssl_des_decrypt_block(void* ptr, const uint8_t* in, uint8_t* out) {
   const fssl_des_ctx* ctx = ptr;
 
+  // Decrypt in place
+  if (in == nullptr)
+    in = out;
+
   // Initial permutation
   const uint64_t block = pbox(fssl_be_read_u64(in), ip, sizeof(ip), 64);
 

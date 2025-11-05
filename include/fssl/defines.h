@@ -134,5 +134,6 @@ typedef struct {
   } while (false)
 
 #define FSSL_MAX_IV_SIZE 32
+#define FSSL_MAX_BLOCK_SIZE 32
 
 #endif

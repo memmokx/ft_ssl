@@ -59,6 +59,12 @@ typedef struct _fssl_cipher_s {
     size_t size;
   } iv;
 
+  union {
+    struct {
+      uint8_t state[FSSL_MAX_BLOCK_SIZE];
+    } cbc;
+  } mode_data;
+
   ssize_t (*encrypt)(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n);
   ssize_t (*decrypt)(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n);
 } fssl_cipher_t;
@@ -70,6 +76,9 @@ fssl_error_t fssl_cipher_new(fssl_cipher_t* cipher,
 fssl_error_t fssl_cipher_set_key(fssl_cipher_t* cipher, const uint8_t* key);
 fssl_error_t fssl_cipher_set_iv(fssl_cipher_t* cipher, const fssl_slice_t* iv);
 
+size_t fssl_cipher_block_size(const fssl_cipher_t* cipher);
+size_t fssl_cipher_key_size(const fssl_cipher_t* cipher);
+
 ssize_t fssl_cipher_encrypt(fssl_cipher_t* cipher,
                             const uint8_t* in,
                             uint8_t* out,
@@ -80,6 +89,16 @@ ssize_t fssl_cipher_decrypt(fssl_cipher_t* cipher,
                             uint8_t* out,
                             size_t n);
 
+void fssl_cipher_reset(fssl_cipher_t* cipher);
 void fssl_cipher_deinit(fssl_cipher_t* cipher);
+
+fssl_error_t fssl_pkcs5_pad(const uint8_t* in,
+                            uint8_t* out,
+                            size_t n,
+                            size_t buf_capacity,
+                            size_t block_size,
+                            size_t* written);
+
+fssl_error_t fssl_pkcs5_unpad(const uint8_t* in, size_t n, size_t block_size, size_t* padded);
 
 #endif

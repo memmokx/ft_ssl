@@ -20,6 +20,7 @@ FSSL_SRC = src/fssl/encoding.c \
 		src/fssl/error.c \
 		src/fssl/password.c \
 		src/fssl/kdf.c \
+		src/fssl/pkcs.c \
 		src/fssl/rand.c
 
 CLI_SRC = src/cli/app.c src/cli/node.c
