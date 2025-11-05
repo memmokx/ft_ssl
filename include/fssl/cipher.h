@@ -76,6 +76,7 @@ fssl_error_t fssl_cipher_new(fssl_cipher_t* cipher,
 fssl_error_t fssl_cipher_set_key(fssl_cipher_t* cipher, const uint8_t* key);
 fssl_error_t fssl_cipher_set_iv(fssl_cipher_t* cipher, const fssl_slice_t* iv);
 
+fssl_cipher_type_t fssl_cipher_type(const fssl_cipher_t* cipher);
 size_t fssl_cipher_block_size(const fssl_cipher_t* cipher);
 size_t fssl_cipher_key_size(const fssl_cipher_t* cipher);
 

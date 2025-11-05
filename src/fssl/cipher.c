@@ -150,6 +150,10 @@ void fssl_cipher_reset(fssl_cipher_t* c) {
   fssl_cipher_set_mode_data_internal(c, (fssl_slice_t){c->iv.data, c->iv.size});
 }
 
+fssl_force_inline fssl_cipher_type_t fssl_cipher_type(const fssl_cipher_t* cipher) {
+  return cipher->desc->type;
+}
+
 fssl_force_inline size_t fssl_cipher_block_size(const fssl_cipher_t* cipher) {
   return cipher->desc->block_size;
 }
