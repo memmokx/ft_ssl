@@ -555,10 +555,9 @@ static ssize_t cipher_reader_read(void* p, uint8_t* buf, const size_t n) {
       ctx->holding = false;
     }
 
-      ssl_assert(ctx->holding == false);
-      ctx->dbuflen -= ctx->block_size;
-      ft_memcpy(ctx->holdbuf, ctx->dbuf + ctx->dbuflen, ctx->block_size);
-      ctx->holding = true;
+    ctx->dbuflen -= ctx->block_size;
+    ft_memcpy(ctx->holdbuf, ctx->dbuf + ctx->dbuflen, ctx->block_size);
+    ctx->holding = true;
 
     if (ctx->dbuflen == 0)
       continue;
