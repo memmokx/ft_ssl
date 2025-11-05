@@ -75,7 +75,7 @@ void fssl_cipher_deinit(fssl_cipher_t* cipher) {
   *cipher = (fssl_cipher_t){};
 }
 
-ssize_t fssl_force_inline fssl_cipher_encrypt(fssl_cipher_t* cipher,
+fssl_force_inline ssize_t fssl_cipher_encrypt(fssl_cipher_t* cipher,
                                               const uint8_t* in,
                                               uint8_t* out,
                                               const size_t n) {
@@ -84,7 +84,7 @@ ssize_t fssl_force_inline fssl_cipher_encrypt(fssl_cipher_t* cipher,
   return cipher->encrypt(cipher, in, out, n);
 }
 
-ssize_t fssl_force_inline fssl_cipher_decrypt(fssl_cipher_t* cipher,
+fssl_force_inline ssize_t fssl_cipher_decrypt(fssl_cipher_t* cipher,
                                               const uint8_t* in,
                                               uint8_t* out,
                                               const size_t n) {
@@ -93,7 +93,7 @@ ssize_t fssl_force_inline fssl_cipher_decrypt(fssl_cipher_t* cipher,
   return cipher->decrypt(cipher, in, out, n);
 }
 
-fssl_error_t fssl_force_inline fssl_cipher_set_key(fssl_cipher_t* cipher,
+fssl_force_inline fssl_error_t fssl_cipher_set_key(fssl_cipher_t* cipher,
                                                    const uint8_t* key) {
   if (!cipher || !key)
     return FSSL_ERR_INVALID_ARGUMENT;
@@ -103,8 +103,8 @@ fssl_error_t fssl_force_inline fssl_cipher_set_key(fssl_cipher_t* cipher,
   return FSSL_SUCCESS;
 }
 
-static fssl_error_t fssl_cipher_set_mode_data_internal(fssl_cipher_t* c,
-                                                       const fssl_slice_t iv) {
+static fssl_force_inline fssl_error_t
+fssl_cipher_set_mode_data_internal(fssl_cipher_t* c, const fssl_slice_t iv) {
   const size_t size = iv.size;
   const uint8_t* data = iv.data;
 
@@ -121,7 +121,7 @@ static fssl_error_t fssl_cipher_set_mode_data_internal(fssl_cipher_t* c,
   return FSSL_SUCCESS;
 }
 
-fssl_error_t fssl_force_inline fssl_cipher_set_iv(fssl_cipher_t* cipher,
+fssl_force_inline fssl_error_t fssl_cipher_set_iv(fssl_cipher_t* cipher,
                                                   const fssl_slice_t* iv) {
   fssl_error_t err = FSSL_SUCCESS;
 
@@ -150,11 +150,11 @@ void fssl_cipher_reset(fssl_cipher_t* c) {
   fssl_cipher_set_mode_data_internal(c, (fssl_slice_t){c->iv.data, c->iv.size});
 }
 
-size_t fssl_force_inline fssl_cipher_block_size(const fssl_cipher_t* cipher) {
+fssl_force_inline size_t fssl_cipher_block_size(const fssl_cipher_t* cipher) {
   return cipher->desc->block_size;
 }
 
-size_t fssl_force_inline fssl_cipher_key_size(const fssl_cipher_t* cipher) {
+fssl_force_inline size_t fssl_cipher_key_size(const fssl_cipher_t* cipher) {
   return cipher->desc->key_size;
 }
 
@@ -267,7 +267,7 @@ static ssize_t cbc_decrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, 
         state[i] = in[i];
 
     w += block_size;
-    in += block_size * (!inplace); // keep ubsan happy
+    in += block_size * (!inplace);  // keep ubsan happy
     out += block_size;
 
     n -= block_size;
