@@ -103,6 +103,17 @@ fssl_force_inline fssl_error_t fssl_cipher_set_key(fssl_cipher_t* cipher,
   return FSSL_SUCCESS;
 }
 
+static fssl_force_inline size_t fssl_cipher_iv_size_internal(const fssl_cipher_t* cipher) {
+  switch (cipher->mode) {
+    case CIPHER_MODE_ECB:
+      return 0;
+    case CIPHER_MODE_CBC:
+      return fssl_cipher_block_size(cipher);
+    default:
+      __builtin_trap();
+  }
+}
+
 static fssl_force_inline fssl_error_t
 fssl_cipher_set_mode_data_internal(fssl_cipher_t* c, const fssl_slice_t iv) {
   const size_t size = iv.size;
@@ -110,7 +121,7 @@ fssl_cipher_set_mode_data_internal(fssl_cipher_t* c, const fssl_slice_t iv) {
 
   switch (c->mode) {
     case CIPHER_MODE_CBC:
-      if (size != fssl_cipher_block_size(c))
+      if (size != fssl_cipher_iv_size_internal(c))
         return FSSL_ERR_INVALID_ARGUMENT;
       ft_memcpy(c->mode_data.cbc.state, data, size);
       break;
@@ -160,6 +171,10 @@ fssl_force_inline size_t fssl_cipher_block_size(const fssl_cipher_t* cipher) {
 
 fssl_force_inline size_t fssl_cipher_key_size(const fssl_cipher_t* cipher) {
   return cipher->desc->key_size;
+}
+
+fssl_force_inline size_t fssl_cipher_iv_size(const fssl_cipher_t* cipher) {
+  return fssl_cipher_iv_size_internal(cipher);
 }
 
 static ssize_t ecb_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
