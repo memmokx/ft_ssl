@@ -1,7 +1,6 @@
 #include <fssl/fssl.h>
 
-fssl_error_t fssl_pkcs5_pad(
-                            uint8_t* out,
+fssl_error_t fssl_pkcs5_pad(uint8_t* out,
                             const size_t n,
                             const size_t buf_capacity,
                             const size_t block_size,
