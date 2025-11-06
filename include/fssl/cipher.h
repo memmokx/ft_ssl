@@ -93,8 +93,7 @@ ssize_t fssl_cipher_decrypt(fssl_cipher_t* cipher,
 void fssl_cipher_reset(fssl_cipher_t* cipher);
 void fssl_cipher_deinit(fssl_cipher_t* cipher);
 
-fssl_error_t fssl_pkcs5_pad(const uint8_t* in,
-                            uint8_t* out,
+fssl_error_t fssl_pkcs5_pad(uint8_t* out,
                             size_t n,
                             size_t buf_capacity,
                             size_t block_size,

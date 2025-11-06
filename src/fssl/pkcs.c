@@ -1,6 +1,6 @@
 #include <fssl/fssl.h>
 
-fssl_error_t fssl_pkcs5_pad(const uint8_t* in,
+fssl_error_t fssl_pkcs5_pad(
                             uint8_t* out,
                             const size_t n,
                             const size_t buf_capacity,
@@ -8,7 +8,7 @@ fssl_error_t fssl_pkcs5_pad(const uint8_t* in,
                             size_t* written) {
   if (block_size > UINT8_MAX)
     return FSSL_ERR_INVALID_ARGUMENT;
-  if (!in || !out)
+  if (!out)
     return FSSL_ERR_INVALID_ARGUMENT;
 
   const size_t added = block_size - (n % block_size);
