@@ -84,7 +84,7 @@ static ssize_t encrypt(fssl_cipher_t* c, const uint8_t* msg, size_t msg_len, uin
 
   memcpy(in, msg, msg_len);
   size_t padded = 0;
-  if (fssl_pkcs5_pad(in, in + msg_len, msg_len, sizeof(in) - msg_len,
+  if (fssl_pkcs5_pad(in + msg_len, msg_len, sizeof(in) - msg_len,
                      fssl_cipher_block_size(c), &padded) != FSSL_SUCCESS)
     cr_assert(false, "fssl_pkcs5_pad failed");
 
