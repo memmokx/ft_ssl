@@ -18,6 +18,7 @@
     .some = false \
   }
 
+#define option_some(opt) ((opt).v)
 #define option_is_some(opt) ((opt).some)
 #define option_is_none(opt) (!(opt).some)
 

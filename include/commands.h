@@ -26,6 +26,8 @@ static __attribute_maybe_unused__ string g_current_command = {};
 
 #define logerr(fmt, ...) \
   ssl_log_err("ft_ssl: %s: " fmt, g_current_command.ptr, ##__VA_ARGS__)
+#define logwarn(fmt, ...) \
+  ssl_log_warn("ft_ssl: %s: " fmt, g_current_command.ptr, ##__VA_ARGS__)
 
 #define SSL_COMMAND_PROLOGUE(_command) \
   do {                                 \

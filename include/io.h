@@ -85,6 +85,7 @@ void io_writer_close(const IoWriterCloser* writer);
 
 Option(IoReader) b64_reader_new(IoReader* parent, bool ignore_nl);
 Option(IoReader) file_reader_new(const char* file, bool close_on_deinit);
+
 /*!
  * @brief Create a new CipherReader that allows decryption of the data read from
  * the parent.

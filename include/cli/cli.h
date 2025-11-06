@@ -51,8 +51,8 @@ cli_flag_t* cli_flags_get(cli_flags_t* flags, char flag);
 typedef union {
   fssl_hash_t hash;
   struct {
-    fssl_block_cipher_t cipher;
-    fssl_block_cipher_mode_t mode;
+    const fssl_cipher_desc_t* desc;
+    fssl_cipher_mode_t mode;
   } cipher;
 } cli_command_data;
 

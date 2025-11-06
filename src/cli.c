@@ -6,7 +6,7 @@
 uint8_t g_failed = 0;
 
 #define cdata(_type, _data) {._type = _data}
-#define cipherdata(_cipher, _mode) {.cipher = _cipher, .mode = _mode}
+#define cipherdata(_cipher, _mode) {.desc = &_cipher, .mode = _mode}
 
 #define UNIQUE_NAME_CONCAT(base, counter) base##counter
 #define UNIQUE_NAME_IMPL(base, counter) UNIQUE_NAME_CONCAT(base, counter)
@@ -42,14 +42,14 @@ uint8_t g_failed = 0;
   V("sha512", cdata(hash, fssl_hash_sha512), HASH_COMMAND_FLAGS, digest_command_impl) \
   V("blake2", cdata(hash, fssl_hash_blake2), HASH_COMMAND_FLAGS, digest_command_impl)
 
-#define FOREACH_CIPHER_COMMAND(V)                                                  \
-  V("base64", {}, B64_COMMAND_FLAGS, base64_command_impl)                          \
-  V("des", cdata(cipher, cipherdata(fssl_cipher_des, ECB)), DES_COMMAND_FLAGS,     \
-    cipher_command_impl)                                                           \
-  V("des-ecb", cdata(cipher, cipherdata(fssl_cipher_des, ECB)), DES_COMMAND_FLAGS, \
-    cipher_command_impl)                                                           \
-  V("des-cbc", cdata(cipher, cipherdata(fssl_cipher_des, CBC)), DES_COMMAND_FLAGS, \
-    cipher_command_impl)
+#define FOREACH_CIPHER_COMMAND(V)                                           \
+  V("base64", {}, B64_COMMAND_FLAGS, base64_command_impl)                   \
+  V("des", cdata(cipher, cipherdata(fssl_cipher_des, CIPHER_MODE_ECB)),     \
+    DES_COMMAND_FLAGS, cipher_command_impl)                                 \
+  V("des-ecb", cdata(cipher, cipherdata(fssl_cipher_des, CIPHER_MODE_ECB)), \
+    DES_COMMAND_FLAGS, cipher_command_impl)                                 \
+  V("des-cbc", cdata(cipher, cipherdata(fssl_cipher_des, CIPHER_MODE_CBC)), \
+    DES_COMMAND_FLAGS, cipher_command_impl)
 
 #define FOREACH_COMMAND(V) \
   FOREACH_HASH_COMMAND(V)  \
