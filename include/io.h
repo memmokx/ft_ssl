@@ -97,6 +97,15 @@ Option(IoReader) file_reader_new(const char* file, bool close_on_deinit);
  */
 Option(IoReader) cipher_reader_new(IoReader* parent, fssl_cipher_t* cipher);
 
+/*!
+ * Create a new CipherWriter which encrypts data it receives using the given \a `cipher`.
+ * When closed it will pad and encrypt the remaining data then flush it to the parent \c IoWriter.
+ *
+ * @param parent The parent \c IoWriterCloser, encrypted data will be written into it.
+ * @param cipher The cipher object used to encrypt the data.
+ * @return \c None on error, otherwise a \c IoWriterCloser
+ */
+Option(IoWriterCloser) cipher_writer_new(IoWriterCloser* parent, fssl_cipher_t* cipher);
 Option(IoWriterCloser) b64_writer_new(IoWriter* inner);
 Option(IoWriter) file_writer_new(const char* file, bool close_on_deinit, int oflag);
 

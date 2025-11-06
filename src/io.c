@@ -486,7 +486,7 @@ static ssize_t cipher_reader_fetch_more(CipherReader* ctx) {
 
   const size_t before = ctx->buflen;
 
-  while (!ctx->eof && (sizeof(ctx->buf) - ctx->buflen) > 0) {
+  while (!ctx->eof && sizeof(ctx->buf) - ctx->buflen > 0) {
     const size_t n = sizeof(ctx->buf) - ctx->buflen;
     const ssize_t r = io_reader_read(ctx->inner, ctx->buf + ctx->buflen, n);
     if (r < 0)
@@ -601,6 +601,7 @@ static void cipher_reader_reset(void* p) {
   auto const inner = ctx->inner;
   auto const block_size = ctx->block_size;
 
+  io_reader_reset(inner);
   *ctx = (CipherReader){.inner = inner, .cipher = c, .block_size = block_size};
 }
 
@@ -615,15 +616,16 @@ static void cipher_reader_deinit(void** p) {
   *p = nullptr;
 }
 
+// TODO: add padding function argument
 /*!
- * @brief Create a new CipherReader that allows decryption of the data read from
+ * @brief Create a new \c CipherReader that allows decryption of the data read from
  * the parent.
  *
  * This object DOES NOT own the cipher object, it will not be freed on _deinit.
- * io_reader_reset calls WILL call fssl_cipher_reset.
- * @param parent The parent IoReader, data will be read from it and then decrypted.
+ * \c io_reader_reset calls WILL call \c fssl_cipher_reset.
+ * @param parent The parent \c IoReader, data will be read from it and then decrypted.
  * @param cipher The cipher object, it will be used to decrypt the read data.
- * @return None if memory allocation fail. On success: new CipherReader object.
+ * @return \c None if memory allocation fail. On success: new \c CipherReader object.
  */
 Option(IoReader) cipher_reader_new(IoReader* parent, fssl_cipher_t* cipher) {
   CipherReader* instance = malloc(sizeof(CipherReader));
@@ -644,6 +646,163 @@ Option(IoReader) cipher_reader_new(IoReader* parent, fssl_cipher_t* cipher) {
   };
 
   return (Option(IoReader))Some(r);
+}
+
+typedef struct {
+  IoWriterCloser* inner;
+  fssl_cipher_t* cipher;
+
+  size_t written;
+
+  // Pending buffer
+  uint8_t pbuf[IO_ENC_BUFFER_SIZE + FSSL_MAX_BLOCK_SIZE];
+  size_t pbuflen;
+
+  // Encryption buffer
+  uint8_t ebuf[IO_ENC_BUFFER_SIZE];
+  size_t block_size;
+} CipherWriter;
+
+#define sizeofpending(ctx) (sizeof((ctx)->pbuf) - FSSL_MAX_BLOCK_SIZE)
+
+/*!
+ * Write \a n bytes from \a buf into the internal writer, this will encrypt them
+ * beforehand. This writer will encrypt in blocks of \c IO_ENC_BUFFER_SIZE
+ * @return
+ */
+static ssize_t cipher_writer_write(void* p, const uint8_t* buf, size_t n) {
+  CipherWriter* ctx = p;
+
+  size_t w = 0;
+  while (w < n) {
+    while (w < n && ctx->pbuflen < sizeofpending(ctx)) {
+      const size_t available = min(sizeofpending(ctx) - ctx->pbuflen, n - w);
+      ft_memmove(ctx->pbuf + ctx->pbuflen, buf + w, available);
+
+      w += available;
+      ctx->pbuflen += available;
+    }
+
+    if (ctx->pbuflen == sizeofpending(ctx)) {
+      const size_t toencrypt = ctx->pbuflen - ctx->block_size;
+      const ssize_t encrypted =
+          fssl_cipher_encrypt(ctx->cipher, ctx->pbuf, ctx->ebuf, toencrypt);
+      // Erase plaintext from memory in every case, but keep the last block
+      ft_bzero(ctx->pbuf, toencrypt);
+      if (encrypted < 0) {
+        ssl_log_err("cipher_writer: encrypt: error during encryption (n=%lu)\n",
+                    toencrypt);
+        return -1;
+      }
+
+      ssl_assert((size_t)encrypted == toencrypt);
+      // Move the last block to the front
+      ft_memmove(ctx->pbuf, ctx->pbuf + toencrypt, ctx->block_size);
+      ctx->pbuflen -= encrypted;
+
+      if (io_writer_write((IoWriter*)ctx->inner, ctx->ebuf, toencrypt) < 0)
+        return -1;
+    }
+  }
+
+  return (ssize_t)w;
+}
+
+static void cipher_writer_reset(void* p) {
+  CipherWriter* ctx = p;
+  if (!ctx)
+    return;
+
+  auto const c = ctx->cipher;
+  auto const inner = ctx->inner;
+  auto const block_size = ctx->block_size;
+
+  io_writer_reset((IoWriter*)inner);
+
+  *ctx = (CipherWriter){.inner = inner, .cipher = c, .block_size = block_size};
+}
+
+static void cipher_writer_deinit(void** p) {
+  if (!p || !*p)
+    return;
+
+  CipherWriter* ctx = *p;
+
+  io_writer_deinit((IoWriter*)ctx->inner);
+  *ctx = (CipherWriter){};
+  free(ctx);
+  *p = nullptr;
+}
+
+/*!
+ * Pad and encrypt the remaining data. Closes the underlying \c IoWriter.
+ */
+static void cipher_writer_close(void* p) {
+  CipherWriter* ctx = p;
+  if (!ctx)
+    return;
+
+  if (ctx->pbuflen > 0) {
+    size_t added = 0;
+    const fssl_error_t err = fssl_pkcs5_pad(ctx->pbuf + ctx->pbuflen, ctx->pbuflen,
+                                            sizeof(ctx->pbuf), ctx->block_size, &added);
+    if fssl_haserr (err) {
+      ssl_log_err("cipher_writer: padding error: %s\n", fssl_error_string(err));
+      goto out;
+    }
+
+    if ((ctx->pbuflen + added) % ctx->block_size != 0) {
+      ssl_log_err("cipher_writer: bad pad: block_size=%lu\n", ctx->block_size);
+      goto out;
+    }
+
+    const ssize_t encrypted =
+        fssl_cipher_encrypt(ctx->cipher, ctx->pbuf, ctx->ebuf, ctx->pbuflen + added);
+
+    ft_bzero(ctx->pbuf, ctx->pbuflen + added);
+    if (encrypted < 0)
+      goto out;
+
+    io_writer_write((IoWriter*)ctx->inner, ctx->ebuf, encrypted);
+    ctx->pbuflen = 0;
+  }
+
+out:
+  io_writer_close(ctx->inner);
+}
+
+// TODO: add padding function argument
+/*!
+ * Create a new CipherWriter which encrypts data it receives using the given \a `cipher`.
+ * When closed it will pad and encrypt the remaining data then flush it to the parent \c IoWriter.
+ *
+ * @param parent The parent \c IoWriterCloser, encrypted data will be written into it.
+ * @param cipher The cipher object used to encrypt the data.
+ * @return \c None on error, otherwise a \c IoWriterCloser
+ */
+Option(IoWriterCloser) cipher_writer_new(IoWriterCloser* parent, fssl_cipher_t* cipher) {
+  CipherWriter* instance = malloc(sizeof(CipherWriter));
+  if (!instance)
+    return None(IoWriterCloser);
+
+  *instance = (CipherWriter){
+      .inner = parent,
+      .cipher = cipher,
+      .block_size = fssl_cipher_block_size(cipher),
+  };
+
+  const IoWriterCloser w = {
+      .W =
+          {
+              instance,
+              cipher_writer_write,
+              cipher_writer_reset,
+              cipher_writer_deinit,
+          },
+      cipher_writer_close,
+  };
+
+  return (Option(IoWriterCloser))Some(w);
 }
 
 // --- File Writer
