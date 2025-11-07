@@ -1,4 +1,0 @@
-name = "cli::md5"
-patterns = ["*.test"]
-    
-[format.shtest]
