@@ -1,0 +1,4 @@
+# RUN: echo "Hello World !" | not ft_ssl des-cbc -k E4509FD810B09D71 2>&1 | FileCheck %s
+
+# CHECK: error
+# CHECK-SAME: iv undefined

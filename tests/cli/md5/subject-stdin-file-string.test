@@ -1,5 +1,5 @@
 # RUN: echo "And above all," > %t
-# RUN: echo "GL HF let's go" | ft_ssl md5 -p -s "foo" %t | filecheck %s 
+# RUN: echo "GL HF let's go" | ft_ssl md5 -p -s "foo" %t | FileCheck %s
 
 # CHECK: ("GL HF let's go")= d1e3cc342b6da09480b27ec57ff243e2
 # CHECK: MD5 ("foo") = acbd18db4cc2f85cedef654fccc4a4d8

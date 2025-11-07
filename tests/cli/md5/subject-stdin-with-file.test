@@ -1,5 +1,5 @@
 # RUN: echo "And above all," > %t
-# RUN: echo "be sure to handle edge cases carefully" | ft_ssl md5 -p %t | filecheck %s 
+# RUN: echo "be sure to handle edge cases carefully" | ft_ssl md5 -p %t | FileCheck %s
 
 # CHECK: ("be sure to handle edge cases carefully")= 3553dc7dc5963b583c056d1b9fa3349c
 # CHECK: MD5 ({{.*}}) = 53d53ea94217b259c11a5a2d104ec58a

@@ -1,0 +1,6 @@
+# RUN: echo "Hello World!" | not ft_ssl des-ecb -k "150aGo!!" 2>&1 | FileCheck %s
+
+# CHECK: error
+# CHECK-SAME: des-ecb
+# CHECK-SAME: Invalid key
+# CHECK-SAME: invalid character

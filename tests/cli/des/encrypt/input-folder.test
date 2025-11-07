@@ -1,0 +1,6 @@
+# RUN: rm -rf %t && mkdir %t
+# RUN: not ft_ssl des-ecb -p "ft_ssl_des" -i %t 2>&1 | FileCheck %s
+
+CHECK: Is a directory
+CHECK: error
+CHECK-SAME: des-ecb

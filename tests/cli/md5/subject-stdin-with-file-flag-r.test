@@ -1,5 +1,5 @@
 # RUN: echo "And above all," > %t
-# RUN: echo "but eventually you will understand" | ft_ssl md5 -p -r %t | filecheck %s 
+# RUN: echo "but eventually you will understand" | ft_ssl md5 -p -r %t | FileCheck %s
 
 # CHECK: ("but eventually you will understand")= dcdd84e0f635694d2a943fa8d3905281
 # CHECK: 53d53ea94217b259c11a5a2d104ec58a {{.*}}

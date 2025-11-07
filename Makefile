@@ -86,7 +86,7 @@ test: $(TESTS_BIN)
 	./$(TESTS_BIN)
 
 lit-test: $(NAME)
-	@litcheck lit run -v --path="$(PWD)" tests/cli/*
+	@lit --path="$(PWD)" tests/cli/*
 
 $(LIBFSSL): $(LIBFSSL_OBJ) $(LIBFT)
 	$(CC) -shared $(CFLAGS) $(LIBFSSL_OBJ) $(LIBFT) -o $@ $(LIBS) $(INCLUDE)

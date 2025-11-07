@@ -1,0 +1,11 @@
+# RUN: echo -n "Salted__" > %t
+# RUN: head -c 5 >> %t
+# RUN: <%t base64 | not ft_ssl des-cbc -a -d -p "ft_ssl_des" 2>&1 | FileCheck %s
+
+# CHECK: error
+# CHECK-SAME: des-cbc
+# CHECK-SAME: input
+
+# CHECK: error
+# CHECK-SAME: des-cbc
+# CHECK-SAME: salt

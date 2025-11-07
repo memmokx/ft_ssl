@@ -1,0 +1,4 @@
+# RUN: echo "Hello World !" > %t
+# RUN: <%t openssl des-ecb $SSLFLAGS -K E4509FD810B09D71  >%t.openssl
+# RUN: <%t ft_ssl des-ecb -k E4509FD810B09D71 >%t.fssl
+# RUN: cmp %t.fssl %t.openssl

@@ -1,0 +1,4 @@
+# RUN: echo "Hello World!" | not ft_ssl des-cbc -p "ft_ssl_des" -v "02!glidsdd" 2>&1 | FileCheck %s
+
+# CHECK: error
+# CHECK-SAME: Invalid iv

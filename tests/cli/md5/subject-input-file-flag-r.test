@@ -1,4 +1,4 @@
 # RUN: echo "And above all," > %t
-# RUN: ft_ssl md5 -r %t | filecheck %s 
+# RUN: ft_ssl md5 -r %t | FileCheck %s
 
 # CHECK: 53d53ea94217b259c11a5a2d104ec58a {{.*}} 

@@ -1,0 +1,1 @@
+# RUN: echo "Hello World!" | ft_ssl des-ecb -p "ft_ssl_des" -v "02!glidsdd" 2>&1

@@ -4,7 +4,7 @@
 
 - A C compiler that supports C23
 - **Optional**: Criterion: to run `fssl` tests.
-- **Optional**: [litcheck](https://github.com/bitwalker/litcheck): to run the cli test suite.
+- **Optional**: LLVM lit & FileCheck: to run the cli test suite.
 
 ## Building
 
@@ -32,7 +32,7 @@ Simply run `make test`. Requires `Criterion`
 
 ### Integration testing
 
-Simply run `make lit-test`. Requires `litcheck`
+Simply run `make lit-test`. Requires `lit` & `FileCheck`
 
 ## Subjects
 
