@@ -337,7 +337,7 @@ static __attribute_maybe_unused__ IoReader* cipher_get_reader(IoReader* parent,
 
   if (input) {
     const string* file = &input->value.str;
-    auto const tmp = file_reader_new(file->ptr, true);
+    const auto tmp = file_reader_new(file->ptr, true);
     option_let_some_else(tmp, *parent) else {
       logerr("Unable to open input file\n");
       goto err;
@@ -347,7 +347,7 @@ static __attribute_maybe_unused__ IoReader* cipher_get_reader(IoReader* parent,
   }
 
   if (base64 && operation == OP_DECRYPT) {
-    auto const tmp = b64_reader_new(parent, true);
+    const auto tmp = b64_reader_new(parent, true);
     option_let_some_else(tmp, reader) else {
       logerr("Out of memory\n");
       goto err;
@@ -374,7 +374,7 @@ static __attribute_maybe_unused__ IoWriterCloser* cipher_get_writer(
 
   if (output) {
     const auto file = &output->value.str;
-    auto const tmp = file_writer_new(file->ptr, true, O_CREAT);
+    const auto tmp = file_writer_new(file->ptr, true, O_CREAT);
     option_let_some_else(tmp, *parent) else {
       logerr("Unable to open output file\n");
       goto err;
@@ -384,7 +384,7 @@ static __attribute_maybe_unused__ IoWriterCloser* cipher_get_writer(
   }
 
   if (base64 && operation == OP_ENCRYPT) {
-    auto const tmp = b64_writer_new(parent);
+    const auto tmp = b64_writer_new(parent);
     option_let_some_else(tmp, writer) else {
       logerr("Out of memory\n");
       goto err;

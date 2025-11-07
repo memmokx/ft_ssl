@@ -1,7 +1,7 @@
 NAME = ft_ssl
 CC ?= cc
 
-CFLAGS = -Wall -Wextra -Werror -std=c23 -fPIC
+CFLAGS = -std=c23 -Wall -Wextra -Werror -Wno-unknown-warning-option -Wno-error=old-style-declaration -fPIC
 LIBS = -lbsd
 
 FSSL_CLI_FEATURES = 0

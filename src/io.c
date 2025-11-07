@@ -32,6 +32,7 @@ ssize_t io_writer_write(const IoWriter* writer, const uint8_t* buf, size_t n) {
 void io_writer_reset(const IoWriter* writer) {
   writer->reset(writer->instance);
 }
+
 void io_writer_deinit(IoWriter* writer) {
   if (writer && writer->deinit)
     writer->deinit(&writer->instance);
@@ -597,9 +598,9 @@ static void cipher_reader_reset(void* p) {
   if (!ctx)
     return;
 
-  auto const c = ctx->cipher;
-  auto const inner = ctx->inner;
-  auto const block_size = ctx->block_size;
+  const auto c = ctx->cipher;
+  const auto inner = ctx->inner;
+  const auto block_size = ctx->block_size;
 
   io_reader_reset(inner);
   *ctx = (CipherReader){.inner = inner, .cipher = c, .block_size = block_size};
@@ -713,9 +714,9 @@ static void cipher_writer_reset(void* p) {
   if (!ctx)
     return;
 
-  auto const c = ctx->cipher;
-  auto const inner = ctx->inner;
-  auto const block_size = ctx->block_size;
+  const auto c = ctx->cipher;
+  const auto inner = ctx->inner;
+  const auto block_size = ctx->block_size;
 
   io_writer_reset((IoWriter*)inner);
 

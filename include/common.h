@@ -38,7 +38,7 @@
 #define option_let_some(opt, variable) \
     (option_is_some(opt)) \
       for (bool _c_c = true; _c_c; _c_c = false) \
-        for (auto const variable = (opt).v; _c_c; _c_c = false) \
+        for (const auto variable = (opt).v; _c_c; _c_c = false) \
 
 #define option_let_some_else(opt, variable) \
     if (option_is_some(opt)) \

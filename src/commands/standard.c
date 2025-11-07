@@ -35,7 +35,7 @@ static Option(IoReader)
     base64_reader(IoReader* parent, const Operation op, const cli_flag_t* input_flag) {
   if (input_flag) {
     const string* file = &input_flag->value.str;
-    auto const tmp = file_reader_new(file->ptr, true);
+    const auto tmp = file_reader_new(file->ptr, true);
     option_let_some_else(tmp, *parent) else {
       logerr("Unable to open input file\n");
       goto err;
@@ -44,7 +44,7 @@ static Option(IoReader)
 
   // We need to read base64 data, so wrap the parent with a base64 reader.
   if (op == OP_DECODE) {
-    auto const tmp = b64_reader_new(parent, true);
+    const auto tmp = b64_reader_new(parent, true);
     if (option_is_none(tmp)) {
       logerr("Out of memory\n");
       goto err;
@@ -62,7 +62,7 @@ static Option(IoWriterCloser)
     base64_writer(IoWriter* parent, const Operation op, const cli_flag_t* output_flag) {
   if (output_flag) {
     const string* file = &output_flag->value.str;
-    auto const tmp = file_writer_new(file->ptr, true, O_CREAT);
+    const auto tmp = file_writer_new(file->ptr, true, O_CREAT);
     option_let_some_else(tmp, *parent) else {
       logerr("Unable to open output file\n");
       goto err;
@@ -70,7 +70,7 @@ static Option(IoWriterCloser)
   }
 
   if (op == OP_ENCODE) {
-    auto const tmp = b64_writer_new(parent);
+    const auto tmp = b64_writer_new(parent);
     if (option_is_none(tmp)) {
       logerr("Out of memory\n");
       goto err;

@@ -22,6 +22,10 @@ make lib
 
 ## Testing
 
+Prior to testing make sure to have a clean build by running `make fclean`.
+
+*Recommended*: To enable the sanitizers add `SANITIZE=1`.
+
 ### Unit testing
 
 Simply run `make test`. Requires `Criterion`
