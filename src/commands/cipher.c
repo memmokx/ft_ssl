@@ -57,9 +57,10 @@ static fssl_error_t cipher_decode_hex(const string data,
   // buffer filled with 0 chars to handle incomplete data
   char buf[fssl_hex_encoded_size(CIPHER_MAX_KEY_LEN)] = {};
   const size_t encoded_size = fssl_hex_encoded_size(expected_size);
+  const size_t data_size = min(data.len, encoded_size);
 
   size_t i = 0;
-  for (; i < data.len; ++i)
+  for (; i < data_size; ++i)
     buf[i] = data.ptr[i];
   for (; i < encoded_size; ++i)
     buf[i] = '0';

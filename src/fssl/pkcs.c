@@ -32,6 +32,8 @@ fssl_error_t fssl_pkcs5_unpad(const uint8_t* in,
     return FSSL_ERR_INVALID_ARGUMENT;
 
   const uint8_t added = in[n - 1];
+  if (added > n)
+    return FSSL_ERR_INVALID_PADDING;
 
   bool corrupted = false;
   for (size_t i = added; i != 0; --i)
