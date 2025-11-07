@@ -530,7 +530,10 @@ int cipher_command_impl(string command,
     goto done;
   }
 
-  const bool has_salt = (!key_flag || password_flag || salt_flag);
+  // openssl doesn't write the salt in these cases:
+  //  1. You provided a key via the flags.
+  //  2. You provided a salt via the flags.
+  const bool has_salt = (!key_flag || password_flag) && !salt_flag;
   if (has_salt && operation == OP_ENCRYPT) {
     if (io_writer_write((IoWriter*)writer, (uint8_t*)magic, sizeof(magic)) !=
         sizeof(magic)) {
