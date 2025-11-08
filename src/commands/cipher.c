@@ -68,52 +68,33 @@ static fssl_error_t cipher_decode_hex(const string data,
   return fssl_hex_decode(buf, encoded_size, out, expected_size, nullptr);
 }
 
+#define PBKDF2_ITER_DEFAULT 10000
+
 static fssl_error_t cipher_bytes_to_key(const string password,
                                         const uint8_t* salt,
                                         uint8_t* key,
                                         const size_t key_size,
                                         uint8_t* iv,
                                         const size_t iv_size) {
-  // pbkdf1 but like openssl EVP_BytesToKey
-  uint8_t digest[FSSL_SHA256_SUM_SIZE] = {};
-  fssl_sha256_ctx ctx;
+  // PBKDF2-HMAC-SHA25, because the subject tells us to use -pbkdf2
+  fssl_error_t err = FSSL_SUCCESS;
+  uint8_t dk[CIPHER_MAX_KEY_LEN + CIPHER_MAX_IV_LEN];
 
-  size_t kl = key_size;
-  size_t il = iv_size;
+  Hasher H = fssl_hasher_new(fssl_hash_sha256);
+  if (!H.instance)
+    return FSSL_ERR_OUT_OF_MEMORY;
 
-  int addmd = 0;
-  while (true) {
-    fssl_sha256_init(&ctx);
-
-    if (addmd++)
-      fssl_sha256_write(&ctx, digest, sizeof(digest));
-
-    fssl_sha256_write(&ctx, (uint8_t*)password.ptr, password.len);
-    fssl_sha256_write(&ctx, salt, CIPHER_SALT_LEN);
-
-    fssl_sha256_finish(&ctx, digest, sizeof(digest));
-
-    size_t i = 0;
-    if (kl) {
-      const size_t bytes = min(kl, sizeof(digest));
-      ft_memcpy(key + (key_size - kl), digest, bytes);
-
-      kl -= bytes;
-      i += bytes;
-    }
-
-    if (il && i != sizeof(digest)) {
-      const size_t bytes = min(il, sizeof(digest) - i);
-      ft_memcpy(iv + (iv_size - il), digest + i, bytes);
-
-      il -= bytes;
-    }
-
-    if (kl == 0 && il == 0)
-      break;
+  // https://github.com/openssl/openssl/blob/1b2e3bd2339ecb7912097cf3c8ddec860010be43/apps/enc.c#L318
+  err = fssl_pbkdf2_hmac(&H, /* iters */ PBKDF2_ITER_DEFAULT, (uint8_t*)password.ptr,
+                         password.len, salt, CIPHER_SALT_LEN, dk, key_size + iv_size);
+  if (err == FSSL_SUCCESS) {
+    ft_memcpy(key, dk, key_size);
+    if (iv_size > 0)
+      ft_memcpy(iv, dk + key_size, iv_size);
   }
 
-  return FSSL_SUCCESS;
+  fssl_hasher_destroy(&H);
+  return err;
 }
 
 /*!
