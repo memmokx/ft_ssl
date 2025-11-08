@@ -159,6 +159,7 @@ bool fssl_blake2_finish(fssl_blake2_ctx* ctx, uint8_t* buf, size_t buf_capacity)
 const fssl_hash_t fssl_hash_blake2 = {
     .ctx_size = sizeof(fssl_blake2_ctx),
     .sum_size = FSSL_BLAKE2_SUM_SIZE,
+    .block_size = FSSL_BLAKE2_BLOCK_SIZE,
     .write_fn = (fssl_hash_write_fn)fssl_blake2_write,
     .finish_fn = (fssl_hash_finish_fn)fssl_blake2_finish,
     .reset_fn = (fssl_hash_reset_fn)fssl_blake2_init,

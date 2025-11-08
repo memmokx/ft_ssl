@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <unistd.h>
 
 typedef struct {
   const uint8_t* data;
@@ -135,5 +136,6 @@ typedef struct {
 
 #define FSSL_MAX_IV_SIZE 32
 #define FSSL_MAX_BLOCK_SIZE 32
+#define FSSL_HASH_MAX_BLOCK_SIZE 128
 
 #endif

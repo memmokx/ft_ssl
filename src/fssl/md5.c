@@ -121,6 +121,7 @@ static bool fssl_md5_finish_impl(void* ctx, uint8_t* buf, size_t buf_capacity) {
 const fssl_hash_t fssl_hash_md5 = {
     .ctx_size = sizeof(fssl_md5_ctx),
     .sum_size = FSSL_MD5_SUM_SIZE,
+    .block_size = FSSL_MD5_BLOCK_SIZE,
     .write_fn = fssl_md5_write_impl,
     .finish_fn = fssl_md5_finish_impl,
     .reset_fn = fssl_md5_init_impl,

@@ -110,10 +110,8 @@ static size_t decrypt(fssl_cipher_t* c, uint8_t* ct, size_t size) {
     ssize_t _r = encrypt(&_c, msg, (msg_size), _out);                               \
     if (_r < 0)                                                                     \
       cr_assert(false, "encrypt failed");                                           \
-    if (expected) {                                                                 \
-      cr_assert_eq(_r, (expected_size), "Ciphertext size doesn't match expected");  \
-      cr_assert_arr_eq(_out, expected, (expected_size), "Ciphertext mismatch");     \
-    }                                                                               \
+    cr_assert_eq(_r, (expected_size), "Ciphertext size doesn't match expected");    \
+    cr_assert_arr_eq(_out, expected, (expected_size), "Ciphertext mismatch");       \
     fssl_cipher_reset(&_c);                                                         \
     _r = decrypt(&_c, _out, _r);                                                    \
     cr_assert_eq(_r, (msg_size), "Decrypted size doesn't match");                   \

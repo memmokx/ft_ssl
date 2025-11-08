@@ -139,6 +139,7 @@ bool fssl_sha512_finish(fssl_sha512_ctx* ctx, uint8_t* buf, size_t buf_capacity)
 const fssl_hash_t fssl_hash_sha512 = {
     .ctx_size = sizeof(fssl_sha512_ctx),
     .sum_size = FSSL_SHA512_SUM_SIZE,
+    .block_size = FSSL_SHA512_BLOCK_SIZE,
     .write_fn = (fssl_hash_write_fn)fssl_sha512_write,
     .finish_fn = (fssl_hash_finish_fn)fssl_sha512_finish,
     .reset_fn = (fssl_hash_reset_fn)fssl_sha512_init,
