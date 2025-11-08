@@ -35,6 +35,7 @@ void fssl_hasher_destroy(Hasher* hasher);
 typedef struct {
   Hasher* h;
   uint8_t opad[FSSL_HASH_MAX_BLOCK_SIZE];
+  uint8_t ipad[FSSL_HASH_MAX_BLOCK_SIZE];
 } fssl_hmac_ctx;
 
 fssl_error_t fssl_hmac_init(fssl_hmac_ctx* ctx,
@@ -42,6 +43,7 @@ fssl_error_t fssl_hmac_init(fssl_hmac_ctx* ctx,
                             const uint8_t* key,
                             size_t key_len);
 
+void fssl_hmac_reset(const fssl_hmac_ctx* ctx);
 void fssl_hmac_write(const fssl_hmac_ctx* ctx, const uint8_t* data, size_t len);
 bool fssl_hmac_finish(const fssl_hmac_ctx* ctx, uint8_t* out, size_t out_len);
 

@@ -56,7 +56,6 @@ fssl_error_t fssl_hmac_init(fssl_hmac_ctx* ctx,
                             const uint8_t* key,
                             size_t key_len) {
   uint8_t bkey[FSSL_HASH_MAX_BLOCK_SIZE] = {};
-  uint8_t ipad[FSSL_HASH_MAX_BLOCK_SIZE] = {};
 
   if (!ctx || !inner || !key)
     return FSSL_ERR_INVALID_ARGUMENT;
@@ -69,23 +68,34 @@ fssl_error_t fssl_hmac_init(fssl_hmac_ctx* ctx,
   else
     ft_memcpy(bkey, key, key_len);
 
-  *ctx = (fssl_hmac_ctx){inner, {}};
+  *ctx = (fssl_hmac_ctx){inner, {}, {}};
 
   for (size_t i = 0; i < block_size; ++i) {
     ctx->opad[i] = bkey[i] ^ 0x5c;
-    ipad[i] = bkey[i] ^ 0x36;
+    ctx->ipad[i] = bkey[i] ^ 0x36;
   }
 
   fssl_hasher_reset(inner);
-  fssl_hasher_write(inner, ipad, block_size);
+  fssl_hasher_write(inner, ctx->ipad, block_size);
   return FSSL_SUCCESS;
 }
 
-void fssl_hmac_write(const fssl_hmac_ctx* ctx, const uint8_t* data, size_t len) {
+fssl_force_inline void fssl_hmac_reset(const fssl_hmac_ctx* ctx) {
+  const size_t block_size = fssl_hasher_block_size(ctx->h);
+
+  fssl_hasher_reset(ctx->h);
+  fssl_hasher_write(ctx->h, ctx->ipad, block_size);
+}
+
+fssl_force_inline void fssl_hmac_write(const fssl_hmac_ctx* ctx,
+                                       const uint8_t* data,
+                                       size_t len) {
   fssl_hasher_write(ctx->h, data, len);
 }
 
-bool fssl_hmac_finish(const fssl_hmac_ctx* ctx, uint8_t* out, size_t out_len) {
+fssl_force_inline bool fssl_hmac_finish(const fssl_hmac_ctx* ctx,
+                                        uint8_t* out,
+                                        size_t out_len) {
   uint8_t inner[FSSL_HASH_MAX_BLOCK_SIZE] = {};
 
   const size_t block_size = fssl_hasher_block_size(ctx->h);

@@ -9,6 +9,7 @@
 
 #include "cipher.h"
 #include "des.h"
+#include "kdf.h"
 #include "password.h"
 #include "rand.h"
 

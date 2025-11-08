@@ -10,6 +10,11 @@ typedef struct {
   size_t size;
 } fssl_slice_t;
 
+typedef struct {
+  uint8_t* data;
+  size_t size;
+} fssl_buffer_t;
+
 #define fssl_force_inline __attribute__((always_inline)) inline
 
 #define fssl_le_write_u64(p, n)  \

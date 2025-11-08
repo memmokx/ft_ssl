@@ -38,6 +38,7 @@ TEST_SRC = tests/fssl/test_md5.c \
  		tests/fssl/test_blake2.c \
  		tests/fssl/test_des.c \
  		tests/fssl/test_hmac.c \
+ 		tests/fssl/test_kdf.c \
  		tests/fssl/test_base64.c
 
 
@@ -84,7 +85,7 @@ $(TESTS_BIN): $(TEST_OBJ) lib
 
 test: $(TESTS_BIN)
 	@echo "$(COLOUR_GREEN)Running unit tests$(COLOUR_END)"
-	./$(TESTS_BIN) -l
+	./$(TESTS_BIN)
 
 lit-test: $(NAME)
 	@lit --path="$(PWD)" tests/cli/*
