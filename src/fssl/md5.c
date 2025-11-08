@@ -106,17 +106,7 @@ bool fssl_md5_finish(fssl_md5_ctx* ctx, uint8_t* buf, size_t buf_capacity) {
   return true;
 }
 
-static void fssl_md5_init_impl(void* ctx) {
-  return fssl_md5_init(ctx);
-}
-
-static void fssl_md5_write_impl(void* ctx, const uint8_t* data, size_t len) {
-  return fssl_md5_write(ctx, data, len);
-}
-
-static bool fssl_md5_finish_impl(void* ctx, uint8_t* buf, size_t buf_capacity) {
-  return fssl_md5_finish(ctx, buf, buf_capacity);
-}
+fssl_wrap_hash_impl(fssl_md5);
 
 const fssl_hash_t fssl_hash_md5 = {
     .ctx_size = sizeof(fssl_md5_ctx),

@@ -100,11 +100,13 @@ bool fssl_sha1_finish(fssl_sha1_ctx* ctx, uint8_t* buf, size_t buf_capacity) {
   return true;
 }
 
+fssl_wrap_hash_impl(fssl_sha1);
+
 const fssl_hash_t fssl_hash_sha1 = {
     .ctx_size = sizeof(fssl_sha1_ctx),
     .sum_size = FSSL_SHA1_SUM_SIZE,
     .block_size = FSSL_SHA1_BLOCK_SIZE,
-    .write_fn = (fssl_hash_write_fn)fssl_sha1_write,
-    .finish_fn = (fssl_hash_finish_fn)fssl_sha1_finish,
-    .reset_fn = (fssl_hash_reset_fn)fssl_sha1_init,
+    .write_fn = fssl_sha1_write_impl,
+    .finish_fn = fssl_sha1_finish_impl,
+    .reset_fn = fssl_sha1_init_impl,
 };

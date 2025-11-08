@@ -61,7 +61,7 @@ typedef struct {
   ((uint32_t)((p)[0]) | ((uint32_t)((p)[1]) << 8) | ((uint32_t)((p)[2]) << 16) | \
    ((uint32_t)((p)[3]) << 24))
 
-#define fssl_be_read_u32(p)                                                  \
+#define fssl_be_read_u32(p)                                                      \
   ((uint32_t)((p)[3]) | ((uint32_t)((p)[2]) << 8) | ((uint32_t)((p)[1]) << 16) | \
    ((uint32_t)((p)[0]) << 24))
 
@@ -142,5 +142,18 @@ typedef struct {
 #define FSSL_MAX_IV_SIZE 32
 #define FSSL_MAX_BLOCK_SIZE 32
 #define FSSL_HASH_MAX_BLOCK_SIZE 128
+
+#define fssl_wrap_hash_impl(prefix)                                                \
+  static void prefix##_init_impl(void* ctx) {                                      \
+    return prefix##_init(ctx);                                                     \
+  }                                                                                \
+                                                                                   \
+  static void prefix##_write_impl(void* ctx, const uint8_t* data, size_t len) {    \
+    return prefix##_write(ctx, data, len);                                         \
+  }                                                                                \
+                                                                                   \
+  static bool prefix##_finish_impl(void* ctx, uint8_t* buf, size_t buf_capacity) { \
+    return prefix##_finish(ctx, buf, buf_capacity);                                \
+  }
 
 #endif
