@@ -1,6 +1,6 @@
 # RUN: touch %t && chmod -r %t
 # RUN: not ft_ssl des-ecb -p "ft_ssl_des" -i %t 2>&1 | FileCheck %s
 
-CHECK: Permission denied
-CHECK: error
-CHECK-SAME: des-ecb
+# CHECK: Permission denied
+# CHECK: error
+# CHECK-SAME: des-ecb
