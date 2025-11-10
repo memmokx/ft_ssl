@@ -1,0 +1,4 @@
+# RUN: head -c 3657 > %t
+# RUN: <%t base64 -w 11 >%t.encoded
+# RUN: <%t.encoded ft_ssl base64 -d >%t.decoded
+# RUN: cmp %t %t.decoded

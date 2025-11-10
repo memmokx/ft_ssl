@@ -56,6 +56,11 @@ void io_writer_close(const IoWriterCloser* writer) {
 
 // --- Base64 reader
 
+static bool is_whitespace(const uint8_t c) {
+  return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\v') ||
+         (c == '\f');
+}
+
 static ssize_t b64_read_more(Base64Reader* ctx) {
   if (ctx->eof)
     return 0;
@@ -81,9 +86,8 @@ static ssize_t b64_read_more(Base64Reader* ctx) {
     size_t w = 0;
     for (size_t r = 0; r < ctx->ilen; ++r) {
       const uint8_t c = ctx->input[r];
-      if (c != '\n' && c != '\r') {
+      if (!is_whitespace(c))
         ctx->input[w++] = c;
-      }
     }
     ctx->ilen = w;
   }

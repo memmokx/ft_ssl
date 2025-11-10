@@ -361,7 +361,7 @@ static __attribute_maybe_unused__ IoWriterCloser* cipher_get_writer(
 
   if (output) {
     const auto file = &output->value.str;
-    const auto tmp = file_writer_new(file->ptr, true, O_CREAT);
+    const auto tmp = file_writer_new(file->ptr, true, O_CREAT | O_TRUNC);
     option_let_some_else(tmp, *parent) else {
       logerr("Unable to open output file\n");
       goto err;

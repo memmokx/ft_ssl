@@ -62,7 +62,7 @@ static Option(IoWriterCloser)
     base64_writer(IoWriter* parent, const Operation op, const cli_flag_t* output_flag) {
   if (output_flag) {
     const string* file = &output_flag->value.str;
-    const auto tmp = file_writer_new(file->ptr, true, O_CREAT);
+    const auto tmp = file_writer_new(file->ptr, true, O_CREAT | O_TRUNC);
     option_let_some_else(tmp, *parent) else {
       logerr("Unable to open output file\n");
       goto err;
@@ -115,8 +115,10 @@ int base64_command_impl(string command,
     goto done;
   }
 
-  if (io_copy(&reader, (IoWriter*)&writer) < 0)
-    exit_code = 1;
+  if (io_copy(&reader, (IoWriter*)&writer) < 0) {
+    logerr("I/O error\n");
+    exit_code = EXIT_FAILURE;
+  }
 
 done:
   io_writer_close(&writer);

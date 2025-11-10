@@ -1,0 +1,5 @@
+# RUN: rm -f %t && echo "This should not appear !" >%t
+# RUN: echo "Just a simple test" | ft_ssl base64 -o %t 2>&1
+# RUN: cat %t | FileCheck %s
+
+# CHECK: SnVzdCBhIHNpbXBsZSB0ZXN0Cg==

@@ -1,0 +1,3 @@
+# RUN: echo "Hello World ! ft_ssl_des" | ft_ssl base64 2>&1 | FileCheck %s
+
+# CHECK: SGVsbG8gV29ybGQgISBmdF9zc2xfZGVzCg==

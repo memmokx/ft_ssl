@@ -1,0 +1,4 @@
+# RUN: head -c 5678 > %t
+# RUN: <%t base64 -w 0 >%t.real
+# RUN: ft_ssl base64 -i %t -o %t.ours
+# RUN: cmp %t.real %t.ours

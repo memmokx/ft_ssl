@@ -1,0 +1,7 @@
+# RUN: rm -f %t
+# RUN: not ft_ssl base64 -i %t 2>&1 | FileCheck %s
+
+# CHECK: No such file
+# CHECK: error
+# CHECK-SAME: base64:
+# CHECK-SAME: input file

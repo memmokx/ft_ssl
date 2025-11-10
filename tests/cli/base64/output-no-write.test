@@ -1,0 +1,7 @@
+# RUN: rm -rf %t && touch %t && chmod -w %t
+# RUN: echo "Just a simple test" | not ft_ssl base64 -o %t 2>&1 | FileCheck %s
+
+# CHECK: Permission denied
+# CHECK: error
+# CHECK-SAME: base64:
+# CHECK-SAME: output file

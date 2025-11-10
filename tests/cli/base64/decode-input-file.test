@@ -1,0 +1,4 @@
+# RUN: head -c 251 /dev/random > %t
+# RUN: <%t base64 -w 0 > %t.base64
+# RUN: ft_ssl base64 -d -i %t.base64 >%t.decoded
+# RUN: cmp %t %t.decoded
