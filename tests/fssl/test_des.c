@@ -66,11 +66,12 @@ Test(fssl, des_encrypt_block) {
 
 #include <assert.h>
 
-static fssl_cipher_t init_cipher(fssl_cipher_mode_t mode,
+static fssl_cipher_t init_cipher(const fssl_cipher_desc_t* cipher,
+                                 fssl_cipher_mode_t mode,
                                  uint8_t* key,
                                  const fssl_slice_t* iv) {
   fssl_cipher_t c;
-  if (fssl_cipher_new(&c, (void*)&fssl_cipher_des, mode) != FSSL_SUCCESS)
+  if (fssl_cipher_new(&c, (void*)cipher, mode) != FSSL_SUCCESS)
     assert(false && "fssl_cipher_new failed");
   if (key)
     fssl_cipher_set_key(&c, key);
@@ -103,10 +104,10 @@ static size_t decrypt(fssl_cipher_t* c, uint8_t* ct, size_t size) {
 
 // https://cyberchef.io/#recipe=DES_Encrypt(%7B'option':'Hex','string':'624B8CE75AA2A249'%7D,%7B'option':'Hex','string':''%7D,'ECB','Raw','Raw')To_Hex('0x%20with%20comma',0)&input=SGVsbG8gV29ybGQgIQ
 
-#define TEST_ENCRYPT(mode, key, iv, msg, msg_size, expected, expected_size)         \
+#define TEST_ENCRYPT(cipher, mode, key, iv, msg, msg_size, expected, expected_size) \
   do {                                                                              \
     uint8_t _out[1024] = {};                                                        \
-    fssl_cipher_t _c = init_cipher(mode, key, iv);                                  \
+    fssl_cipher_t _c = init_cipher((cipher), mode, key, iv);                        \
     ssize_t _r = encrypt(&_c, msg, (msg_size), _out);                               \
     if (_r < 0)                                                                     \
       cr_assert(false, "encrypt failed");                                           \
@@ -123,6 +124,12 @@ static size_t decrypt(fssl_cipher_t* c, uint8_t* ct, size_t size) {
     fssl_cipher_deinit(&_c);                                                        \
   } while (false)
 
+#define TEST_ENCRYPT_DES(mode, key, iv, msg, msg_size, expected, expected_size) \
+  TEST_ENCRYPT(&fssl_cipher_des, mode, key, iv, msg, msg_size, expected, expected_size)
+
+#define TEST_ENCRYPT_DES3(mode, key, iv, msg, msg_size, expected, expected_size) \
+  TEST_ENCRYPT(&fssl_cipher_des3, mode, key, iv, msg, msg_size, expected, expected_size)
+
 Test(fssl, des_encrypt_ecb) {
   // Hello World !
   const uint8_t msg[] = {0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57,
@@ -131,7 +138,7 @@ Test(fssl, des_encrypt_ecb) {
                               0xeb, 0x0a, 0x95, 0xfc, 0xdf, 0x64, 0xdf, 0x85};
   uint8_t key[FSSL_DES_KEY_SIZE] = {0x62, 0x4b, 0x8c, 0xe7, 0x5a, 0xa2, 0xa2, 0x49};
 
-  TEST_ENCRYPT(CIPHER_MODE_ECB, key, nullptr, msg, sizeof(msg), expected,
+  TEST_ENCRYPT_DES(CIPHER_MODE_ECB, key, nullptr, msg, sizeof(msg), expected,
                sizeof(expected));
 }
 
@@ -147,5 +154,29 @@ Test(fssl, des_encrypt_cbc) {
 
   fssl_slice_t iv = {.data = ivb, .size = sizeof(ivb)};
 
-  TEST_ENCRYPT(CIPHER_MODE_CBC, key, &iv, msg, sizeof(msg), expected, sizeof(expected));
+  TEST_ENCRYPT_DES(CIPHER_MODE_CBC, key, &iv, msg, sizeof(msg), expected, sizeof(expected));
+}
+
+Test(fssl, des3_encrypt_ecb) {
+  // Hello World !
+  const uint8_t msg[] = {0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57,
+                         0x6f, 0x72, 0x6c, 0x64, 0x20, 0x21};
+  const uint8_t expected[] = {0x30,0x2c,0x1f,0x93,0xcb,0xab,0x5c,0xc8,0xe3,0x51,0xc2,0x9e,0x59,0xa4,0x7b,0xad};
+  uint8_t key[FSSL_DES3_KEY_SIZE] = {0xc0,0x30,0xc3,0xc9,0xc7,0x55,0xe5,0xd2,0x1a,0x74,0x85,0x74,0x22,0x92,0x50,0x3c,0xbb,0x4e,0xbc,0x43,0x70,0x2d,0x94,0xa9};
+
+  TEST_ENCRYPT_DES3(CIPHER_MODE_ECB, key, nullptr, msg, sizeof(msg), expected,
+               sizeof(expected));
+}
+
+Test(fssl, des3_encrypt_cbc) {
+  // Hello World !
+  const uint8_t msg[] = {0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57,
+                         0x6f, 0x72, 0x6c, 0x64, 0x20, 0x21};
+  const uint8_t expected[] = {0x0e,0xce,0xb3,0x8f,0xfd,0xbd,0x66,0xe2,0xe6,0xf8,0x34,0xe5,0xd2,0x69,0x47,0x91};
+  uint8_t key[FSSL_DES3_KEY_SIZE] = {0xc0,0x30,0xc3,0xc9,0xc7,0x55,0xe5,0xd2,0x1a,0x74,0x85,0x74,0x22,0x92,0x50,0x3c,0xbb,0x4e,0xbc,0x43,0x70,0x2d,0x94,0xa9};
+  uint8_t ivb[FSSL_DES3_BLOCK_SIZE] = {0x83,0xe7,0x9d,0xeb,0x73,0xa9,0xc4,0xc0};
+
+  fssl_slice_t iv = {.data = ivb, .size = sizeof(ivb)};
+
+  TEST_ENCRYPT_DES3(CIPHER_MODE_CBC, key, &iv, msg, sizeof(msg), expected, sizeof(expected));
 }

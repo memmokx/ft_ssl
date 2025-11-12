@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "libft/memory.h"
+#include "libft/string.h"
 
 #define declmode(name, ...)                                                    \
   __VA_ARGS__ ssize_t name##_encrypt(fssl_cipher_t* cipher, const uint8_t* in, \
@@ -98,9 +99,7 @@ fssl_force_inline fssl_error_t fssl_cipher_set_key(fssl_cipher_t* cipher,
   if (!cipher || !key)
     return FSSL_ERR_INVALID_ARGUMENT;
 
-  cipher->desc->init(cipher->instance, key);
-
-  return FSSL_SUCCESS;
+  return cipher->desc->init(cipher->instance, key);
 }
 
 static fssl_force_inline size_t fssl_cipher_iv_size_internal(const fssl_cipher_t* cipher) {
@@ -109,6 +108,20 @@ static fssl_force_inline size_t fssl_cipher_iv_size_internal(const fssl_cipher_t
       return 0;
     case CIPHER_MODE_CBC:
       return fssl_cipher_block_size(cipher);
+    case CIPHER_MODE_CTR:
+      // In CTR mode the IV is (NONCE || COUNTER), the length of the IV is the same
+      // as the block size as for all block ciphers. Here we return the size of the nonce.
+      const size_t block_size = fssl_cipher_block_size(cipher);
+      // Even if this is highly insecure the minimum block_size we accept is 8
+      if (block_size < 2 * sizeof(uint32_t)) {
+        const auto err = libft_static_string(
+            "fssl: internal error: block size is too small for CTR mode\n");
+        write(STDERR_FILENO, err.ptr, err.len);
+        __builtin_trap();
+      }
+
+      // TODO: Maybe create multiple modes? e.g: CTR_64LE, CTR_32BE
+      return block_size - sizeof(uint32_t);
     default:
       __builtin_trap();
   }
@@ -124,6 +137,12 @@ fssl_cipher_set_mode_data_internal(fssl_cipher_t* c, const fssl_slice_t iv) {
       if (size != fssl_cipher_iv_size_internal(c))
         return FSSL_ERR_INVALID_ARGUMENT;
       ft_memcpy(c->mode_data.cbc.state, data, size);
+      break;
+    case CIPHER_MODE_CTR:
+      if (size != fssl_cipher_iv_size_internal(c))
+        return FSSL_ERR_INVALID_ARGUMENT;
+      ft_bzero(&c->mode_data, sizeof(c->mode_data));
+      ft_memcpy(c->mode_data.ctr.iv, data, size);
       break;
     default:
       break;
@@ -296,19 +315,72 @@ static ssize_t cbc_decrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, 
 }
 
 static ssize_t ctr_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
-  (void)ctx;
-  (void)in;
-  (void)out;
-  (void)n;
-  return -1;
+  if (!ctx || !in || !out)
+    return -1;
+  const size_t block_size = fssl_cipher_block_size(ctx);
+  const size_t nonce_size = ctx->iv.size;
+
+  // position in the stream
+  uint8_t* sptr = &ctx->mode_data.ctr.sptr;
+  uint32_t* ctr = &ctx->mode_data.ctr.u32;
+  uint8_t* stream = ctx->mode_data.ctr.stream;
+
+  size_t w = 0;
+
+  if (*sptr > 0) {
+    size_t remaining = block_size - *sptr;
+    if (remaining > n)
+      remaining = n;
+
+    for (size_t i = 0; i < remaining; i++) {
+      out[i] = in[i] ^ stream[i + *sptr];
+    }
+
+    *sptr += remaining;
+    if (*sptr >= block_size)
+      *sptr = 0;
+    w += remaining;
+    if (w >= n)
+      goto done;
+  }
+
+  const size_t blocks = (n - w) / block_size;
+  const auto iv = ctx->mode_data.ctr.iv;
+
+  uint8_t block[FSSL_MAX_BLOCK_SIZE];
+  for (size_t b = 0; b < blocks; b++) {
+    fssl_be_write_u32(iv + nonce_size, *ctr);
+    ctx->desc->encrypt(ctx->instance, iv, block);
+
+    const auto inp = in + w;
+    const auto outp = out + w;
+
+    for (size_t i = 0; i < block_size; i++)
+      outp[i] = inp[i] ^ block[i];
+    w += block_size;
+    *ctr += 1;
+  }
+
+  const auto remaining = n - w;
+  if (remaining > 0) {
+    fssl_be_write_u32(iv + nonce_size, *ctr + 1);
+    ctx->desc->encrypt(ctx->instance, iv, block);
+
+    for (size_t i = 0; i < remaining; i++)
+      out[w + i] = in[w + i] ^ block[i];
+
+    w += remaining;
+    *ctr += 1;
+
+    ft_memcpy(ctx->mode_data.ctr.stream, block, block_size);
+  }
+
+done:
+  return (ssize_t)w;
 }
 
 static ssize_t ctr_decrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
-  (void)ctx;
-  (void)in;
-  (void)out;
-  (void)n;
-  return -1;
+  return ctr_encrypt(ctx, in == nullptr ? out : in, out, n);
 }
 
 static ssize_t cfb_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {

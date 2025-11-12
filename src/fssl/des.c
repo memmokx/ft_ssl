@@ -163,8 +163,7 @@ static fssl_force_inline uint64_t sbox(const uint64_t B, size_t index) {
  * The feistel function of DES.
  */
 static fssl_force_inline uint32_t feistel(const uint32_t x, uint64_t k) {
-  uint64_t tmp = pbox(x, E, sizeof(E), 32);
-  tmp ^= k;
+  const uint64_t tmp = pbox(x, E, sizeof(E), 32) ^ k;
 
   uint64_t result = 0;
   // For each 6 bit group in `tmp` apply its associated sbox function that will produce

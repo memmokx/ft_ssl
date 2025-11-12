@@ -4,7 +4,7 @@ CC ?= cc
 CFLAGS = -std=c23 -Wall -Wextra -Werror -Wno-unknown-warning-option -Wno-error=old-style-declaration -fPIC
 LIBS = -lbsd
 
-FSSL_CLI_FEATURES = 0
+FSSL_CLI_FEATURES = 2
 
 INCLUDE = -Iinclude -Ilibft/include
 
@@ -16,6 +16,7 @@ FSSL_SRC = src/fssl/encoding.c \
 		src/fssl/sha1.c \
 		src/fssl/blake2s.c \
 		src/fssl/des.c \
+		src/fssl/des3.c \
 		src/fssl/cipher.c \
 		src/fssl/error.c \
 		src/fssl/password.c \
