@@ -1,4 +1,5 @@
 #include <fssl/fssl.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "libft/memory.h"
@@ -107,6 +108,7 @@ static fssl_force_inline size_t fssl_cipher_iv_size_internal(const fssl_cipher_t
     case CIPHER_MODE_ECB:
       return 0;
     case CIPHER_MODE_CBC:
+    case CIPHER_MODE_OFB:
       return fssl_cipher_block_size(cipher);
     case CIPHER_MODE_CTR:
       // In CTR mode the IV is (NONCE || COUNTER), the length of the IV is the same
@@ -132,18 +134,20 @@ fssl_cipher_set_mode_data_internal(fssl_cipher_t* c, const fssl_slice_t iv) {
   const size_t size = iv.size;
   const uint8_t* data = iv.data;
 
+  if (size != fssl_cipher_iv_size_internal(c))
+    return FSSL_ERR_INVALID_ARGUMENT;
+
+  ft_bzero(&c->mode_data, sizeof(c->mode_data));
+
   switch (c->mode) {
     case CIPHER_MODE_CBC:
-      if (size != fssl_cipher_iv_size_internal(c))
-        return FSSL_ERR_INVALID_ARGUMENT;
       ft_memcpy(c->mode_data.cbc.state, data, size);
       break;
     case CIPHER_MODE_CTR:
-      if (size != fssl_cipher_iv_size_internal(c))
-        return FSSL_ERR_INVALID_ARGUMENT;
-      ft_bzero(&c->mode_data, sizeof(c->mode_data));
       ft_memcpy(c->mode_data.ctr.iv, data, size);
       break;
+    case CIPHER_MODE_OFB:
+      ft_memcpy(c->mode_data.ofb.stream, data, size);
     default:
       break;
   }
@@ -164,12 +168,11 @@ fssl_force_inline fssl_error_t fssl_cipher_set_iv(fssl_cipher_t* cipher,
 
   if ((err = fssl_cipher_set_mode_data_internal(cipher, (fssl_slice_t){iv->data, size})) !=
       FSSL_SUCCESS)
-    goto out;
+    return err;
 
   ft_memcpy(cipher->iv.data, iv->data, size);
   cipher->iv.size = size;
 
-out:
   return err;
 }
 
@@ -332,9 +335,8 @@ static ssize_t ctr_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, 
     if (remaining > n)
       remaining = n;
 
-    for (size_t i = 0; i < remaining; i++) {
+    for (size_t i = 0; i < remaining; i++)
       out[i] = in[i] ^ stream[i + *sptr];
-    }
 
     *sptr += remaining;
     if (*sptr >= block_size)
@@ -361,7 +363,7 @@ static ssize_t ctr_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, 
     *ctr += 1;
   }
 
-  const auto remaining = n - w;
+  const size_t remaining = n - w;
   if (remaining > 0) {
     fssl_be_write_u32(iv + nonce_size, *ctr + 1);
     ctx->desc->encrypt(ctx->instance, iv, block);
@@ -372,6 +374,7 @@ static ssize_t ctr_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, 
     w += remaining;
     *ctr += 1;
 
+    *sptr = remaining;
     ft_memcpy(ctx->mode_data.ctr.stream, block, block_size);
   }
 
@@ -400,19 +403,60 @@ static ssize_t cfb_decrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, 
 }
 
 static ssize_t ofb_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
-  (void)ctx;
-  (void)in;
-  (void)out;
-  (void)n;
-  return -1;
+  if (!ctx || !in || !out)
+    return -1;
+
+  const size_t block_size = fssl_cipher_block_size(ctx);
+  uint8_t* stream = ctx->mode_data.ofb.stream;
+  uint8_t* sptr = &ctx->mode_data.ofb.sptr;
+
+  size_t w = 0;
+
+  if (*sptr > 0) {
+    size_t remaining = block_size - *sptr;
+    if (remaining > n)
+      remaining = n;
+
+    for (size_t i = 0; i < remaining; i++)
+      out[i] = in[i] ^ stream[i + *sptr];
+
+    *sptr += remaining;
+    if (*sptr >= block_size)
+      *sptr = 0;
+    w += remaining;
+    if (w >= n)
+      goto done;
+  }
+
+  const size_t blocks = (n - w) / block_size;
+  for (size_t b = 0; b < blocks; b++) {
+    ctx->desc->encrypt(ctx->instance, stream, stream);
+
+    const auto inp = in + w;
+    const auto outp = out + w;
+
+    for (size_t i = 0; i < block_size; i++)
+      outp[i] = inp[i] ^ stream[i];
+    w += block_size;
+  }
+
+  const size_t remaining = n - w;
+  if (remaining > 0) {
+    ctx->desc->encrypt(ctx->instance, stream, stream);
+
+    for (size_t i = 0; i < remaining; i++)
+      out[w + i] = in[w + i] ^ stream[i];
+
+    w += remaining;
+    *sptr = remaining;
+  }
+
+done:
+  return (ssize_t)w;
 }
 
 static ssize_t ofb_decrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
-  (void)ctx;
-  (void)in;
-  (void)out;
-  (void)n;
-  return -1;
+  return ofb_encrypt(ctx, in == nullptr ? out : in, out, n);
 }
 
 static ssize_t pcbc_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {

@@ -64,6 +64,11 @@ typedef struct _fssl_cipher_s {
       uint8_t state[FSSL_MAX_BLOCK_SIZE];
     } cbc;
     struct {
+      uint8_t stream[FSSL_MAX_BLOCK_SIZE];
+      // Where are we in the stream
+      uint8_t sptr;
+    } ofb;
+    struct {
       // E(iv)
       uint8_t stream[FSSL_MAX_BLOCK_SIZE];
       uint8_t iv[FSSL_MAX_BLOCK_SIZE];
