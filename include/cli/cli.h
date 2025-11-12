@@ -11,6 +11,8 @@
 
 #define FSSL_MD5_VANILLA 0
 #define FSSL_MD5_BONUS 1
+#define FSSL_DES_VANILLA 2
+#define FSSL_DES_BONUS 3
 
 constexpr size_t CLI_FLAGS_PER_COMMAND = 32;
 constexpr size_t CLI_FLAGS_MAX = 256;

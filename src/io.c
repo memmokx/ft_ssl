@@ -96,13 +96,7 @@ static ssize_t b64_read_more(Base64Reader* ctx) {
 }
 
 static ssize_t b64_decode_chunk(Base64Reader* ctx) {
-  if (ctx->optr > 0 && ctx->optr < ctx->olen) {
-    const size_t rest = ctx->olen - ctx->optr;
-    ft_memmove(ctx->output, ctx->output + ctx->optr, rest);
-    ctx->olen -= rest;
-    ctx->optr -= rest;
-  } else if (ctx->optr >= ctx->olen)
-    ctx->optr = ctx->olen = 0;
+  IO_READER_RETARGET(ctx->optr, ctx->olen, ctx->output);
 
   size_t w = 0;
   while (ctx->olen < sizeof(ctx->output)) {
@@ -451,7 +445,7 @@ IoWriterCloser io_writer_closer_from(const IoWriter writer) {
 
 // --- Encryption related Io
 
-#define IO_ENC_BUFFER_SIZE 2048
+#define IO_ENC_BUFFER_SIZE (8192 * 2)
 
 typedef struct {
   IoReader* inner;
@@ -878,7 +872,7 @@ ssize_t io_copy(IoReader* reader, IoWriter* writer) {
   if (!reader || !writer)
     return -1;
 
-  uint8_t buffer[2048];
+  uint8_t buffer[8192];
 
   ssize_t total = 0;
   while (true) {

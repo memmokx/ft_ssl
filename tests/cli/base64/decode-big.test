@@ -1,0 +1,4 @@
+# RUN: head -c 4587448 /dev/random > %t
+# RUN: <%t base64 | ft_ssl base64 -d | shasum > %t.sum.fssl
+# RUN: <%t shasum >%t.sum.raw
+# RUN: cmp %t.sum.raw %t.sum.fssl
