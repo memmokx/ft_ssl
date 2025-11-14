@@ -109,6 +109,7 @@ static fssl_force_inline size_t fssl_cipher_iv_size_internal(const fssl_cipher_t
       return 0;
     case CIPHER_MODE_CBC:
     case CIPHER_MODE_OFB:
+    case CIPHER_MODE_CFB:
       return fssl_cipher_block_size(cipher);
     case CIPHER_MODE_CTR:
       // In CTR mode the IV is (NONCE || COUNTER), the length of the IV is the same
@@ -148,6 +149,8 @@ fssl_cipher_set_mode_data_internal(fssl_cipher_t* c, const fssl_slice_t iv) {
       break;
     case CIPHER_MODE_OFB:
       ft_memcpy(c->mode_data.ofb.stream, data, size);
+    case CIPHER_MODE_CFB:
+      ft_memcpy(c->mode_data.cfb.stream, data, size);
     default:
       break;
   }
@@ -220,18 +223,20 @@ static ssize_t ecb_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, 
 }
 
 static ssize_t ecb_decrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
-  const bool inplace = in == nullptr;
   const size_t block_size = fssl_cipher_block_size(ctx);
   size_t w = 0;
 
   if (n % block_size != 0)
     return -1;
 
+  if (!in)
+    in = out;
+
   while (n >= block_size) {
-    ctx->desc->decrypt(ctx->instance, (inplace) ? nullptr : in, out);
+    ctx->desc->decrypt(ctx->instance, in, out);
 
     w += block_size;
-    in += block_size * (!inplace);  // keep ubsan happy
+    in += block_size;
     out += block_size;
 
     n -= block_size;
@@ -318,8 +323,9 @@ static ssize_t cbc_decrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, 
 }
 
 static ssize_t ctr_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
-  if (!ctx || !in || !out)
+  if (!ctx || !out)
     return -1;
+
   const size_t block_size = fssl_cipher_block_size(ctx);
   const size_t nonce_size = ctx->iv.size;
 
@@ -329,6 +335,9 @@ static ssize_t ctr_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, 
   uint8_t* stream = ctx->mode_data.ctr.stream;
 
   size_t w = 0;
+
+  if (!in)
+    in = out;
 
   if (*sptr > 0) {
     size_t remaining = block_size - *sptr;
@@ -387,19 +396,128 @@ static ssize_t ctr_decrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, 
 }
 
 static ssize_t cfb_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
-  (void)ctx;
-  (void)in;
-  (void)out;
-  (void)n;
-  return -1;
+  const size_t block_size = fssl_cipher_block_size(ctx);
+
+  uint8_t* stream = ctx->mode_data.cfb.stream;
+  uint8_t* sptr = &ctx->mode_data.cfb.sptr;
+
+  size_t w = 0;
+
+  if (!in)
+    in = out;
+
+  if (*sptr > 0) {
+    size_t remaining = block_size - *sptr;
+    if (remaining > n)
+      remaining = n;
+    for (size_t i = 0; i < remaining; i++) {
+      out[i] = in[i] ^ stream[i + *sptr];
+      stream[i + *sptr] = out[i];
+    }
+
+    w += remaining;
+    *sptr += remaining;
+    if (*sptr >= block_size)
+      *sptr = 0;
+    if (w >= n)
+      goto done;
+  }
+
+  const size_t blocks = (n - w) / block_size;
+
+  for (size_t b = 0; b < blocks; b++) {
+    ctx->desc->encrypt(ctx->instance, stream, stream);
+
+    const auto inp = in + w;
+    const auto outp = out + w;
+
+    for (size_t i = 0; i < block_size; i++) {
+      outp[i] = inp[i] ^ stream[i];
+      stream[i] = outp[i];
+    }
+
+    w += block_size;
+  }
+
+  const size_t remaining = n - w;
+  if (remaining > 0) {
+    ctx->desc->encrypt(ctx->instance, stream, stream);
+    for (size_t i = 0; i < remaining; i++) {
+      out[w + i] = in[w + i] ^ stream[i];
+      stream[i] = out[w + i];
+    }
+
+    w += remaining;
+    *sptr = remaining;
+  }
+
+done:
+  return (ssize_t)w;
 }
 
+// TODO: de-duplicate logic
 static ssize_t cfb_decrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
-  (void)ctx;
-  (void)in;
-  (void)out;
-  (void)n;
-  return -1;
+  const size_t block_size = fssl_cipher_block_size(ctx);
+
+  uint8_t* stream = ctx->mode_data.cfb.stream;
+  uint8_t* sptr = &ctx->mode_data.cfb.sptr;
+  // To keep the ciphertext bytes
+  uint8_t tmp = 0;
+  size_t w = 0;
+
+  if (!in)
+    in = out;
+
+  if (*sptr > 0) {
+    size_t remaining = block_size - *sptr;
+    if (remaining > n)
+      remaining = n;
+    for (size_t i = 0; i < remaining; i++) {
+      tmp = in[i];
+      out[i] = tmp ^ stream[i + *sptr];
+      stream[i + *sptr] = tmp;
+    }
+
+    w += remaining;
+    *sptr += remaining;
+    if (*sptr >= block_size)
+      *sptr = 0;
+    if (w >= n)
+      goto done;
+  }
+
+  const size_t blocks = (n - w) / block_size;
+
+  for (size_t b = 0; b < blocks; b++) {
+    ctx->desc->encrypt(ctx->instance, stream, stream);
+
+    const auto inp = in + w;
+    const auto outp = out + w;
+
+    for (size_t i = 0; i < block_size; i++) {
+      tmp = inp[i];
+      outp[i] = tmp ^ stream[i];
+      stream[i] = tmp;
+    }
+
+    w += block_size;
+  }
+
+  const size_t remaining = n - w;
+  if (remaining > 0) {
+    ctx->desc->encrypt(ctx->instance, stream, stream);
+    for (size_t i = 0; i < remaining; i++) {
+      tmp = in[w + i];
+      out[w + i] = tmp ^ stream[i];
+      stream[i] = tmp;
+    }
+
+    w += remaining;
+    *sptr = remaining;
+  }
+
+done:
+  return (ssize_t)w;
 }
 
 static ssize_t ofb_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
