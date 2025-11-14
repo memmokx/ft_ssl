@@ -42,6 +42,31 @@ uint8_t g_failed = 0;
   V("sha512", cdata(hash, fssl_hash_sha512), HASH_COMMAND_FLAGS, digest_command_impl) \
   V("blake2", cdata(hash, fssl_hash_blake2), HASH_COMMAND_FLAGS, digest_command_impl)
 
+#if FSSL_CLI_FEATURES > FSSL_DES_VANILLA
+#define FOREACH_BONUS_CIPHER(V)                                               \
+  V("des-ctr", cdata(cipher, cipherdata(fssl_cipher_des, CIPHER_MODE_CTR)),   \
+    DES_COMMAND_FLAGS, cipher_command_impl)                                   \
+  V("des-cfb", cdata(cipher, cipherdata(fssl_cipher_des, CIPHER_MODE_CFB)),   \
+    DES_COMMAND_FLAGS, cipher_command_impl)                                   \
+  V("des-ofb", cdata(cipher, cipherdata(fssl_cipher_des, CIPHER_MODE_OFB)),   \
+    DES_COMMAND_FLAGS, cipher_command_impl)                                   \
+  V("des3", cdata(cipher, cipherdata(fssl_cipher_des3, CIPHER_MODE_ECB)),     \
+    DES_COMMAND_FLAGS, cipher_command_impl)                                   \
+  V("des3-ecb", cdata(cipher, cipherdata(fssl_cipher_des3, CIPHER_MODE_ECB)), \
+    DES_COMMAND_FLAGS, cipher_command_impl)                                   \
+  V("des3-cbc", cdata(cipher, cipherdata(fssl_cipher_des3, CIPHER_MODE_CBC)), \
+    DES_COMMAND_FLAGS, cipher_command_impl)                                   \
+  V("des3-ctr", cdata(cipher, cipherdata(fssl_cipher_des3, CIPHER_MODE_CTR)), \
+    DES_COMMAND_FLAGS, cipher_command_impl)                                   \
+  V("des3-cfb", cdata(cipher, cipherdata(fssl_cipher_des3, CIPHER_MODE_CFB)), \
+    DES_COMMAND_FLAGS, cipher_command_impl)                                   \
+  V("des3-ofb", cdata(cipher, cipherdata(fssl_cipher_des3, CIPHER_MODE_OFB)), \
+    DES_COMMAND_FLAGS, cipher_command_impl)
+
+#else
+#define FOREACH_BONUS_CIPHER(V)
+#endif
+
 #define FOREACH_CIPHER_COMMAND(V)                                           \
   V("base64", {}, B64_COMMAND_FLAGS, base64_command_impl)                   \
   V("des", cdata(cipher, cipherdata(fssl_cipher_des, CIPHER_MODE_ECB)),     \
@@ -49,7 +74,8 @@ uint8_t g_failed = 0;
   V("des-ecb", cdata(cipher, cipherdata(fssl_cipher_des, CIPHER_MODE_ECB)), \
     DES_COMMAND_FLAGS, cipher_command_impl)                                 \
   V("des-cbc", cdata(cipher, cipherdata(fssl_cipher_des, CIPHER_MODE_CBC)), \
-    DES_COMMAND_FLAGS, cipher_command_impl)
+    DES_COMMAND_FLAGS, cipher_command_impl)                                 \
+  FOREACH_BONUS_CIPHER(V)
 
 #define FOREACH_COMMAND(V) \
   FOREACH_HASH_COMMAND(V)  \

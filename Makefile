@@ -4,7 +4,9 @@ CC ?= cc
 CFLAGS = -std=c23 -Wall -Wextra -Werror -Wno-unknown-warning-option -Wno-error=old-style-declaration -fPIC
 LIBS = -lbsd
 
-FSSL_CLI_FEATURES = 2
+FSSL_DES_VANILLA = 2
+FSSL_DES_BONUS = 3
+FSSL_CLI_FEATURES = $(FSSL_DES_VANILLA)
 
 INCLUDE = -Iinclude -Ilibft/include
 

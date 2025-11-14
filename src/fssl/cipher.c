@@ -149,8 +149,10 @@ fssl_cipher_set_mode_data_internal(fssl_cipher_t* c, const fssl_slice_t iv) {
       break;
     case CIPHER_MODE_OFB:
       ft_memcpy(c->mode_data.ofb.stream, data, size);
+      break;
     case CIPHER_MODE_CFB:
       ft_memcpy(c->mode_data.cfb.stream, data, size);
+      break;
     default:
       break;
   }
