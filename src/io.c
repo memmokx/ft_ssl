@@ -85,33 +85,130 @@ void io_writer_close(IoWriter* writer) {
 
 // --- Base64 reader
 
+typedef enum {
+  // We simply copy data from the `output` buffer to the user buffer.
+  B64_READER_COPY,
+  // We need to decode more data from the input buffer
+  B64_READER_DECODE,
+  // We need to read more data from the inner reader
+  B64_READER_FETCH,
+  // Reached EOF
+  B64_READER_EOF,
+  // Error occurred.
+  B64_READER_ERROR,
+  // We read all the possible data.
+  B64_READER_FINISHED,
+} b64_reader_state_t;
+
+typedef struct {
+  IoReader base;
+  IoReader* inner;
+
+  b64_reader_state_t state;
+
+  uint8_t input[1024];
+  uint8_t output[1024];
+
+  size_t ilen;
+  size_t iptr;
+  size_t olen;
+  size_t optr;
+
+  bool eof;
+  bool ignore_nl;
+} Base64Reader;
+
 static bool is_whitespace(const uint8_t c) {
   return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\v') ||
          (c == '\f');
 }
 
-static ssize_t b64_read_more(Base64Reader* ctx) {
-  if (ctx->eof)
-    return 0;
+static b64_reader_state_t b64_reader_copy(Base64Reader* ctx,
+                                          uint8_t* buf,
+                                          size_t n,
+                                          size_t* w) {
+  IO_READER_RETARGET(ctx->optr, ctx->olen, ctx->output);
 
-  // Check that there's still data in the input buffer
+  const size_t available = ctx->olen - ctx->optr;
+  if (available == 0)
+    return B64_READER_DECODE;
+
+  const size_t usable = min(available, n - *w);
+  ft_memcpy(buf + *w, ctx->output + ctx->optr, usable);
+  ctx->optr += usable;
+  *w += usable;
+
+  // If we consumed everything we'll need to decode more
+  if (ctx->optr >= ctx->olen) {
+    ctx->optr = ctx->olen = 0;
+    return B64_READER_DECODE;
+  }
+
+  return B64_READER_COPY;
+}
+
+/*!
+ * Decode data from the input buffer into the output buffer.
+ * @return \c B64_READER_COPY if data is available. \c B64_READER_FETCH if there
+ * isn't enough data to decode.
+ */
+static b64_reader_state_t b64_reader_decode(Base64Reader* ctx) {
+  const size_t remaining = ctx->ilen - ctx->iptr;
+  if (remaining < 4)
+    return B64_READER_FETCH;  // we need at least a 4 bytes chunk
+  IO_READER_RETARGET(ctx->optr, ctx->olen, ctx->output);
+
+  const size_t ocap = sizeof(ctx->output) - ctx->olen;
+  const size_t n = min(remaining / 4 * 4, fssl_base64_encoded_size(ocap));
+  if (n < 4)
+    return B64_READER_COPY;  // The caller need to process some data
+
+  size_t written = 0;
+  const fssl_error_t err = fssl_base64_decode((const char*)ctx->input + ctx->iptr, n,
+                                              ctx->output + ctx->olen, ocap, &written);
+  if (fssl_haserr(err)) {
+    ssl_log_warn("info: n:%lu, remaining:%lu, olen:%lu, iptr:%lu\n", n, remaining,
+                 ctx->olen, ctx->iptr);
+    ssl_log_warn("b64: error decoding: %s\n", fssl_error_string(err));
+    return -1;
+  }
+
+  ctx->iptr += n;
+  ctx->olen += written;
+
+  return B64_READER_COPY;
+}
+
+/*!
+ * Fetch more data from the inner reader into the input buffer.
+ * @return \c B64_READER_DECODE if data is available. \c B64_READER_EOF if EOF is reached.
+ * \c B64_READER_ERROR if an error occurred.
+ */
+static b64_reader_state_t b64_reader_fetch(Base64Reader* ctx) {
+  if (ctx->eof)
+    return B64_READER_EOF;
+
   IO_READER_RETARGET(ctx->iptr, ctx->ilen, ctx->input);
 
-  const size_t n = sizeof(ctx->input) - ctx->ilen;
-  // There still space available in the input buffer. Fill it
-  if (n > 0) {
-    const ssize_t r = io_reader_read(ctx->inner, ctx->input + ctx->ilen, n);
+  const size_t available = sizeof(ctx->input) - ctx->ilen;
+  if (available == 0) {
+    ssl_log_err("b64: input buffer full\n");
+    return B64_READER_ERROR;
+  }
+
+  {
+    const ssize_t r = io_reader_read(ctx->inner, ctx->input + ctx->ilen, available);
     if (r < 0)
-      return -1;
+      return B64_READER_ERROR;
     if (r == 0) {
       ctx->eof = true;
-      return 0;
+      return B64_READER_EOF;
     }
+
     ctx->ilen += r;
   }
 
-  // Filter out whitespaces
-  if (ctx->ignore_nl && ctx->ilen > 0) {
+  if (ctx->ignore_nl) {
     size_t w = 0;
     for (size_t r = 0; r < ctx->ilen; ++r) {
       const uint8_t c = ctx->input[r];
@@ -121,50 +218,44 @@ static ssize_t b64_read_more(Base64Reader* ctx) {
     ctx->ilen = w;
   }
 
-  return (ssize_t)ctx->ilen;
+  return B64_READER_DECODE;
 }
 
-static ssize_t b64_decode_chunk(Base64Reader* ctx) {
-  IO_READER_RETARGET(ctx->optr, ctx->olen, ctx->output);
+/*!
+ * Drain the remaining data from the input buffer.
+ * @return \c B64_READER_COPY to signal that remaining data was decoded. \c
+ * B64_READER_ERROR if an error occurred. \c B64_READER_FINISHED if no more data is
+ * available.
+ */
+static b64_reader_state_t b64_reader_drain(Base64Reader* ctx) {
+  if (ctx->olen > ctx->optr)
+    return B64_READER_COPY;
 
-  size_t w = 0;
-  while (ctx->olen < sizeof(ctx->output)) {
-    size_t remaining = ctx->ilen - ctx->iptr;
+  IO_READER_RETARGET(ctx->iptr, ctx->ilen, ctx->input);
+  const size_t remaining = ctx->ilen - ctx->iptr;
+  if (remaining > 0) {
     if (remaining < 4) {
-      const ssize_t r = b64_read_more(ctx);
-      if (r < 0)
-        return -1;
-      if (r == 0)
-        break;
-      if (r + remaining < 4)
-        continue;
+      ssl_log_warn("b64: incomplete final chunk\n");
+      return B64_READER_ERROR;
     }
-
-    remaining = ctx->ilen - ctx->iptr;
-    ssl_assert(remaining >= 4);
-
-    const size_t ocap = sizeof(ctx->output) - ctx->olen;
-    const size_t n = min(remaining / 4 * 4, fssl_base64_encoded_size(ocap));
-    if (n < 4)
-      break;  // The caller need to process some data
 
     size_t written = 0;
     const fssl_error_t err =
-        fssl_base64_decode((const char*)ctx->input + ctx->iptr, n,
-                           ctx->output + ctx->olen, ocap, &written);
+        fssl_base64_decode((const char*)ctx->input, remaining, ctx->output,
+                           sizeof(ctx->output), &written);
     if (fssl_haserr(err)) {
-      ssl_log_warn("info: n:%lu, remaining:%lu, olen:%lu, iptr:%lu\n", n, remaining,
-                   ctx->olen, ctx->iptr);
-      ssl_log_warn("b64: error decoding: %s\n", fssl_error_string(err));
-      return -1;
+      ssl_log_warn("b64: error decoding final chunk: %s\n", fssl_error_string(err));
+      return B64_READER_ERROR;
     }
 
-    ctx->iptr += n;
-    ctx->olen += written;
-    w += written;
+    ctx->iptr = ctx->ilen = 0;
+    ctx->optr = 0;
+    ctx->olen = written;
+
+    return B64_READER_COPY;
   }
 
-  return (ssize_t)w;
+  return B64_READER_FINISHED;
 }
 
 /*!
@@ -175,33 +266,30 @@ static ssize_t b64_decode_chunk(Base64Reader* ctx) {
  */
 static ssize_t b64_reader_read(IoReader* ptr, uint8_t* buf, const size_t n) {
   const auto ctx = (Base64Reader*)ptr;
-
   if (!ptr || !buf) {
     return -1;
   }
 
   size_t w = 0;
   while (w < n) {
-    if (ctx->optr < ctx->olen) {
-      const size_t available = ctx->olen - ctx->optr;
-      const size_t usable = min(available, n - w);
-
-      ft_memcpy(buf + w, ctx->output + ctx->optr, usable);
-      ctx->optr += usable;
-      w += usable;
-
-      if (w >= n)
+    switch (ctx->state) {
+      case B64_READER_COPY:
+        ctx->state = b64_reader_copy(ctx, buf, n, &w);
         break;
-
-      ssl_assert(ctx->optr >= ctx->olen);
+      case B64_READER_DECODE:
+        ctx->state = b64_reader_decode(ctx);
+        break;
+      case B64_READER_FETCH:
+        ctx->state = b64_reader_fetch(ctx);
+        break;
+      case B64_READER_EOF:
+        ctx->state = b64_reader_drain(ctx);
+        break;
+      case B64_READER_ERROR:
+        return -1;
+      case B64_READER_FINISHED:
+        return (ssize_t)w;
     }
-
-    // Refill the decoded buffer
-    const ssize_t decoded = b64_decode_chunk(ctx);
-    if (decoded < 0)
-      return -1;
-    if (decoded == 0)
-      break;
   }
 
   return (ssize_t)w;
@@ -218,6 +306,7 @@ static void b64_reader_reset(IoReader* io) {
 
   *ctx = (Base64Reader){
       .base = base,
+      .state = B64_READER_COPY,
       .inner = inner,
       .ignore_nl = ignore_nl,
   };
@@ -245,6 +334,7 @@ IoReader* b64_reader_new(IoReader* reader, const bool ignore_nl) {
 
   *instance = (Base64Reader){
       .base = {.vt = &b64_reader_vtable},
+      .state = B64_READER_COPY,
       .inner = reader,
       .ignore_nl = ignore_nl,
   };

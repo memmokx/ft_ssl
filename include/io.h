@@ -28,21 +28,6 @@ struct IoWriter {
   const IoWriterVT* vt;
 };
 
-typedef struct {
-  IoReader base;
-  IoReader* inner;
-
-  uint8_t input[1024];
-  uint8_t output[1024];
-
-  size_t ilen;
-  size_t iptr;
-  size_t olen;
-  size_t optr;
-
-  bool eof;
-  bool ignore_nl;
-} Base64Reader;
 
 typedef struct {
   IoWriter base;
