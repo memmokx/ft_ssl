@@ -11,36 +11,65 @@
 #include <fcntl.h>
 #include <string.h>
 
-ssize_t io_reader_read(const IoReader* reader, uint8_t* buf, size_t n) {
-  return reader->read(reader->instance, buf, n);
+ssize_t io_reader_read(IoReader* reader, uint8_t* buf, size_t n) {
+  ssl_assert(reader && reader->vt);
+
+  return reader->vt->read(reader, buf, n);
 }
 
-void io_reader_reset(const IoReader* reader) {
-  if (reader && reader->reset)
-    reader->reset(reader->instance);
+void io_reader_reset(IoReader* reader) {
+  ssl_assert(reader && reader->vt);
+
+  reader->vt->reset(reader);
 }
 
-void io_reader_deinit(IoReader* reader) {
-  if (reader && reader->deinit)
-    reader->deinit(&reader->instance);
+/*!
+ * @brief Free an IoReader object.
+ *
+ * This will call the deinit method, then free the reader itself.
+ *
+ * Warning: if no deinit method is provided, the reader will not be deinitialized.
+ * @param reader The reader to free.
+ */
+void io_reader_free(IoReader* reader) {
+  if (reader && reader->vt && reader->vt->deinit) {
+    reader->vt->deinit(reader);
+    free(reader);
+  }
 }
 
-ssize_t io_writer_write(const IoWriter* writer, const uint8_t* buf, size_t n) {
-  return writer->write(writer->instance, buf, n);
+ssize_t io_writer_write(IoWriter* writer, const uint8_t* buf, size_t n) {
+  ssl_assert(writer && writer->vt);
+
+  return writer->vt->write(writer, buf, n);
 }
 
-void io_writer_reset(const IoWriter* writer) {
-  writer->reset(writer->instance);
+void io_writer_reset(IoWriter* writer) {
+  ssl_assert(writer && writer->vt);
+
+  writer->vt->reset(writer);
 }
 
-void io_writer_deinit(IoWriter* writer) {
-  if (writer && writer->deinit)
-    writer->deinit(&writer->instance);
+/*!
+ * @brief Free an IoWriter object.
+ *
+ * This will call the deinit method, then free the writer itself.
+ *
+ * Warning: if no deinit method is provided, the writer will not be deinitialized.
+ * @param writer The writer to free.
+ */
+void io_writer_free(IoWriter* writer) {
+  if (writer && writer->vt && writer->vt->deinit) {
+    writer->vt->deinit(writer);
+    free(writer);
+  }
 }
 
-void io_writer_close(const IoWriterCloser* writer) {
-  if (writer && writer->close)
-    writer->close(writer->W.instance);
+void io_writer_close(IoWriter* writer) {
+  ssl_assert(writer && writer->vt);
+
+  if (writer->vt->close)
+    writer->vt->close(writer);
 }
 
 #define IO_READER_RETARGET(_ptr, _len, _buf) \
@@ -139,13 +168,13 @@ static ssize_t b64_decode_chunk(Base64Reader* ctx) {
 }
 
 /*!
- * @param ptr The base64 reader context.
+ * @param ptr The base64 reader.
  * @param buf The output buffer to write the decoded read_bytes.
  * @param n The capacity of the output buffer.
  * @return The number of bytes it has written in buf.
  */
-static ssize_t b64_reader_read(void* ptr, uint8_t* buf, const size_t n) {
-  Base64Reader* ctx = ptr;
+static ssize_t b64_reader_read(IoReader* ptr, uint8_t* buf, const size_t n) {
+  const auto ctx = (Base64Reader*)ptr;
 
   if (!ptr || !buf) {
     return -1;
@@ -178,55 +207,55 @@ static ssize_t b64_reader_read(void* ptr, uint8_t* buf, const size_t n) {
   return (ssize_t)w;
 }
 
-static void b64_reader_reset(void* ptr) {
-  if (!ptr)
+static void b64_reader_reset(IoReader* io) {
+  const auto ctx = (Base64Reader*)io;
+  if (!ctx)
     return;
 
-  Base64Reader* ctx = ptr;
-  IoReader* inner = ctx->inner;
+  const auto inner = ctx->inner;
+  const auto base = ctx->base;
+  const auto ignore_nl = ctx->ignore_nl;
 
-  *ctx = (Base64Reader){};
-  ctx->inner = inner;
+  *ctx = (Base64Reader){
+      .base = base,
+      .inner = inner,
+      .ignore_nl = ignore_nl,
+  };
 }
 
-static void b64_reader_deinit(void** ptr) {
-  if (!ptr || !*ptr)
+static void b64_reader_deinit(IoReader* io) {
+  if (!io)
     return;
 
-  Base64Reader* ctx = *ptr;
-
-  io_reader_deinit(ctx->inner);
+  const auto ctx = (Base64Reader*)io;
+  io_free(ctx->inner);
   *ctx = (Base64Reader){};
-  free(ctx);
-  *ptr = nullptr;
 }
 
-Option(IoReader) b64_reader_new(IoReader* reader, const bool ignore_nl) {
+static const IoReaderVT b64_reader_vtable = {
+    .read = b64_reader_read,
+    .reset = b64_reader_reset,
+    .deinit = b64_reader_deinit,
+};
+
+IoReader* b64_reader_new(IoReader* reader, const bool ignore_nl) {
   Base64Reader* instance = malloc(sizeof(Base64Reader));
-  if (!instance) {
-    return None(IoReader);
-  }
+  if (!instance)
+    return nullptr;
 
   *instance = (Base64Reader){
+      .base = {.vt = &b64_reader_vtable},
       .inner = reader,
       .ignore_nl = ignore_nl,
   };
 
-  const IoReader r = {
-      .instance = instance,
-      .read = b64_reader_read,
-      .reset = b64_reader_reset,
-      .deinit = b64_reader_deinit,
-  };
-
-  return (Option(IoReader))Some(r);
+  return (IoReader*)instance;
 }
 
 // --- File reader
 
-static ssize_t file_reader_read(void* ptr, uint8_t* buf, const size_t n) {
-  FileReader* ctx = ptr;
-
+static ssize_t file_reader_read(IoReader* ptr, uint8_t* buf, const size_t n) {
+  const auto ctx = (FileReader*)ptr;
   if (!ctx || !buf)
     return -1;
 
@@ -236,65 +265,61 @@ static ssize_t file_reader_read(void* ptr, uint8_t* buf, const size_t n) {
   return result;
 }
 
-static void file_reader_reset(void* ctx) {
-  (void)ctx;
+static void file_reader_reset(IoReader* ptr) {
+  (void)ptr;
 }
 
-static void file_reader_deinit(void** ptr) {
-  if (!ptr || !*ptr)
+static void file_reader_deinit(IoReader* ptr) {
+  if (!ptr)
     return;
 
-  FileReader* instance = *ptr;
+  const auto instance = (FileReader*)ptr;
   if (instance->close)
     close(instance->fd);
-  free(instance);
-  *ptr = nullptr;
 }
 
-static void nil_reader_deinit(void** ctx) {
-  (void)ctx;
-}
+static const IoReaderVT file_reader_vtable = {
+    .read = file_reader_read,
+    .reset = file_reader_reset,
+    .deinit = file_reader_deinit,
+};
 
-Option(IoReader) file_reader_new(const char* file, const bool close_on_deinit) {
+IoReader* file_reader_new(const char* file, const bool close_on_deinit) {
   FileReader* instance = malloc(sizeof(FileReader));
-  if (!instance) {
-    return None(IoReader);
-  }
+  if (!instance)
+    return nullptr;
 
   const int fd = open(file, O_RDONLY);
   if (fd < 0) {
     ssl_log_warn("file_reader: open(%s): %s\n", file, strerror(errno));
     free(instance);
-    return None(IoReader);
+    return nullptr;
   }
 
   *instance = (FileReader){
+      .base = {.vt = &file_reader_vtable},
       .fd = fd,
       .close = close_on_deinit,
   };
 
-  const IoReader r = {
-      .instance = instance,
-      .read = file_reader_read,
-      .reset = file_reader_reset,
-      .deinit = file_reader_deinit,
-  };
-
-  return (Option(IoReader))Some(r);
+  return (IoReader*)instance;
 }
 
-const IoReader io_stdin = {
-    .instance = &(FileReader){.fd = STDIN_FILENO, .close = false},
-    .read = file_reader_read,
-    .reset = file_reader_reset,
-    .deinit = nil_reader_deinit,
+const IoReader* io_stdin = (IoReader*)&(FileReader){
+    .base =
+        {
+            .vt = &(IoReaderVT){.read = file_reader_read,
+                                .reset = file_reader_reset,
+                                .deinit = nullptr},
+        },
+    .fd = STDIN_FILENO,
+    .close = false,
 };
 
 // --- Base64 writer
 
-static ssize_t b64_writer_write(void* ptr, const uint8_t* buf, size_t n) {
-  Base64Writer* ctx = ptr;
-
+static ssize_t b64_writer_write(IoWriter* ptr, const uint8_t* buf, size_t n) {
+  const auto ctx = (Base64Writer*)ptr;
   if (!ctx || !buf)
     return -1;
 
@@ -362,30 +387,30 @@ done:
   return (ssize_t)w;
 }
 
-static void b64_writer_reset(void* ptr) {
-  Base64Writer* ctx = ptr;
-
+static void b64_writer_reset(IoWriter* ptr) {
+  const auto ctx = (Base64Writer*)ptr;
   if (!ctx)
     return;
 
-  IoWriter* inner = ctx->inner;
-  *ctx = (Base64Writer){.inner = inner};
+  const auto inner = ctx->inner;
+  const auto base = ctx->base;
+
+  io_writer_reset(inner);
+  *ctx = (Base64Writer){.base = base, .inner = inner};
 }
 
-static void b64_writer_deinit(void** ptr) {
-  if (!ptr || !*ptr)
+static void b64_writer_deinit(IoWriter* ptr) {
+  if (!ptr)
     return;
 
-  Base64Writer* ctx = *ptr;
+  const auto ctx = (Base64Writer*)ptr;
 
-  io_writer_deinit(ctx->inner);
+  io_free(ctx->inner);
   *ctx = (Base64Writer){};
-  free(ctx);
-  *ptr = nullptr;
 }
 
-static void b64_writer_close(void* ptr) {
-  Base64Writer* ctx = ptr;
+static void b64_writer_close(IoWriter* ptr) {
+  const auto ctx = (Base64Writer*)ptr;
 
   if (!ctx)
     return;
@@ -405,42 +430,20 @@ static void b64_writer_close(void* ptr) {
   }
 }
 
-Option(IoWriterCloser) b64_writer_new(IoWriter* inner) {
+static const IoWriterVT b64_writer_vtable = {
+    .write = b64_writer_write,
+    .reset = b64_writer_reset,
+    .deinit = b64_writer_deinit,
+    .close = b64_writer_close,
+};
+
+IoWriter* b64_writer_new(IoWriter* inner) {
   Base64Writer* instance = malloc(sizeof(Base64Writer));
-  if (!instance) {
-    return None(IoWriterCloser);
-  }
+  if (!instance)
+    return nullptr;
 
-  *instance = (Base64Writer){.inner = inner};
-
-  const IoWriter wr = {
-      .instance = instance,
-      .write = b64_writer_write,
-      .reset = b64_writer_reset,
-      .deinit = b64_writer_deinit,
-  };
-
-  return (Option(IoWriterCloser))Some(((IoWriterCloser){
-      .W = wr,
-      .close = b64_writer_close,
-  }));
-}
-
-// --- IoWriter utilities
-
-static void nil_writer_close_fn(void* ctx) {
-  (void)ctx;
-}
-
-static void nil_writer_deinit_fn(void** ctx) {
-  (void)ctx;
-}
-
-IoWriterCloser io_writer_closer_from(const IoWriter writer) {
-  return (IoWriterCloser){
-      .W = writer,
-      .close = nil_writer_close_fn,
-  };
+  *instance = (Base64Writer){.base = {.vt = &b64_writer_vtable}, .inner = inner};
+  return (IoWriter*)instance;
 }
 
 // --- Encryption related Io
@@ -448,6 +451,7 @@ IoWriterCloser io_writer_closer_from(const IoWriter writer) {
 #define IO_ENC_BUFFER_SIZE (8192 * 2)
 
 typedef struct {
+  IoReader base;
   IoReader* inner;
   fssl_cipher_t* cipher;
 
@@ -498,8 +502,8 @@ static ssize_t cipher_reader_fetch_more(CipherReader* ctx) {
   return (ssize_t)(ctx->buflen - before);
 }
 
-static ssize_t cipher_reader_read(void* p, uint8_t* buf, const size_t n) {
-  CipherReader* ctx = p;
+static ssize_t cipher_reader_read(IoReader* p, uint8_t* buf, const size_t n) {
+  const auto ctx = (CipherReader*)p;
   size_t w = 0;
 
   IO_READER_RETARGET(ctx->dbufptr, ctx->dbuflen, ctx->dbuf);
@@ -591,29 +595,35 @@ out:
   return (ssize_t)w;
 }
 
-static void cipher_reader_reset(void* p) {
-  CipherReader* ctx = p;
+static void cipher_reader_reset(IoReader* p) {
+  const auto ctx = (CipherReader*)p;
   if (!ctx)
     return;
 
   const auto c = ctx->cipher;
+  const auto base = ctx->base;
   const auto inner = ctx->inner;
   const auto block_size = ctx->block_size;
 
   io_reader_reset(inner);
-  *ctx = (CipherReader){.inner = inner, .cipher = c, .block_size = block_size};
+  *ctx = (CipherReader){
+      .base = base, .inner = inner, .cipher = c, .block_size = block_size};
 }
 
-static void cipher_reader_deinit(void** p) {
-  if (!p || !*p)
+static void cipher_reader_deinit(IoReader* p) {
+  if (!p)
     return;
 
-  CipherReader* ctx = *p;
-  io_reader_deinit(ctx->inner);
+  const auto ctx = (CipherReader*)p;
+  io_free(ctx->inner);
   *ctx = (CipherReader){};
-  free(ctx);
-  *p = nullptr;
 }
+
+static const IoReaderVT cipher_reader_vtable = {
+    .read = cipher_reader_read,
+    .reset = cipher_reader_reset,
+    .deinit = cipher_reader_deinit,
+};
 
 // TODO: add padding function argument
 /*!
@@ -624,31 +634,26 @@ static void cipher_reader_deinit(void** p) {
  * \c io_reader_reset calls WILL call \c fssl_cipher_reset.
  * @param parent The parent \c IoReader, data will be read from it and then decrypted.
  * @param cipher The cipher object, it will be used to decrypt the read data.
- * @return \c None if memory allocation fail. On success: new \c CipherReader object.
+ * @return \c nullptr if memory allocation fail. On success: new \c CipherReader object.
  */
-Option(IoReader) cipher_reader_new(IoReader* parent, fssl_cipher_t* cipher) {
+IoReader* cipher_reader_new(IoReader* parent, fssl_cipher_t* cipher) {
   CipherReader* instance = malloc(sizeof(CipherReader));
   if (!instance)
-    return None(IoReader);
+    return nullptr;
 
   *instance = (CipherReader){
+      .base = {.vt = &cipher_reader_vtable},
       .inner = parent,
       .cipher = cipher,
       .block_size = fssl_cipher_block_size(cipher),
   };
 
-  const IoReader r = {
-      instance,
-      cipher_reader_read,
-      cipher_reader_reset,
-      cipher_reader_deinit,
-  };
-
-  return (Option(IoReader))Some(r);
+  return (IoReader*)instance;
 }
 
 typedef struct {
-  IoWriterCloser* inner;
+  IoWriter base;
+  IoWriter* inner;
   fssl_cipher_t* cipher;
 
   size_t written;
@@ -669,8 +674,8 @@ typedef struct {
  * beforehand. This writer will encrypt in blocks of \c IO_ENC_BUFFER_SIZE
  * @return
  */
-static ssize_t cipher_writer_write(void* p, const uint8_t* buf, size_t n) {
-  CipherWriter* ctx = p;
+static ssize_t cipher_writer_write(IoWriter* p, const uint8_t* buf, size_t n) {
+  const auto ctx = (CipherWriter*)p;
 
   size_t w = 0;
   while (w < n) {
@@ -707,37 +712,36 @@ static ssize_t cipher_writer_write(void* p, const uint8_t* buf, size_t n) {
   return (ssize_t)w;
 }
 
-static void cipher_writer_reset(void* p) {
-  CipherWriter* ctx = p;
+static void cipher_writer_reset(IoWriter* p) {
+  const auto ctx = (CipherWriter*)p;
   if (!ctx)
     return;
 
   const auto c = ctx->cipher;
+  const auto base = ctx->base;
   const auto inner = ctx->inner;
   const auto block_size = ctx->block_size;
 
-  io_writer_reset((IoWriter*)inner);
+  io_writer_reset(inner);
 
-  *ctx = (CipherWriter){.inner = inner, .cipher = c, .block_size = block_size};
+  *ctx = (CipherWriter){
+      .base = base, .inner = inner, .cipher = c, .block_size = block_size};
 }
 
-static void cipher_writer_deinit(void** p) {
-  if (!p || !*p)
+static void cipher_writer_deinit(IoWriter* p) {
+  const auto ctx = (CipherWriter*)p;
+  if (!ctx)
     return;
 
-  CipherWriter* ctx = *p;
-
-  io_writer_deinit((IoWriter*)ctx->inner);
+  io_free(ctx->inner);
   *ctx = (CipherWriter){};
-  free(ctx);
-  *p = nullptr;
 }
 
 /*!
  * Pad and encrypt the remaining data. Closes the underlying \c IoWriter.
  */
-static void cipher_writer_close(void* p) {
-  CipherWriter* ctx = p;
+static void cipher_writer_close(IoWriter* p) {
+  const auto ctx = (CipherWriter*)p;
   if (!ctx)
     return;
 
@@ -762,7 +766,7 @@ static void cipher_writer_close(void* p) {
     if (encrypted < 0)
       goto out;
 
-    io_writer_write((IoWriter*)ctx->inner, ctx->ebuf, encrypted);
+    io_writer_write(ctx->inner, ctx->ebuf, encrypted);
     ctx->pbuflen = 0;
   }
 
@@ -770,44 +774,41 @@ out:
   io_writer_close(ctx->inner);
 }
 
+static const IoWriterVT cipher_writer_vtable = {
+    .write = cipher_writer_write,
+    .reset = cipher_writer_reset,
+    .deinit = cipher_writer_deinit,
+    .close = cipher_writer_close,
+};
+
 // TODO: add padding function argument
 /*!
  * Create a new CipherWriter which encrypts data it receives using the given \a `cipher`.
  * When closed it will pad and encrypt the remaining data then flush it to the parent \c IoWriter.
  *
- * @param parent The parent \c IoWriterCloser, encrypted data will be written into it.
+ * @param parent The parent \c IoWriter, encrypted data will be written into it.
  * @param cipher The cipher object used to encrypt the data.
- * @return \c None on error, otherwise a \c IoWriterCloser
+ * @return \c nullptr on error, otherwise a \c IoWriter
  */
-Option(IoWriterCloser) cipher_writer_new(IoWriterCloser* parent, fssl_cipher_t* cipher) {
+IoWriter* cipher_writer_new(IoWriter* parent, fssl_cipher_t* cipher) {
   CipherWriter* instance = malloc(sizeof(CipherWriter));
   if (!instance)
-    return None(IoWriterCloser);
+    return nullptr;
 
   *instance = (CipherWriter){
+      .base = {.vt = &cipher_writer_vtable},
       .inner = parent,
       .cipher = cipher,
       .block_size = fssl_cipher_block_size(cipher),
   };
 
-  const IoWriterCloser w = {
-      .W =
-          {
-              instance,
-              cipher_writer_write,
-              cipher_writer_reset,
-              cipher_writer_deinit,
-          },
-      cipher_writer_close,
-  };
-
-  return (Option(IoWriterCloser))Some(w);
+  return (IoWriter*)instance;
 }
 
 // --- File Writer
 
-static ssize_t file_writer_write(void* ptr, const uint8_t* buf, size_t n) {
-  FileWriter* ctx = ptr;
+static ssize_t file_writer_write(IoWriter* ptr, const uint8_t* buf, size_t n) {
+  const auto ctx = (FileWriter*)ptr;
 
   if (!ctx || !buf)
     return -1;
@@ -821,51 +822,53 @@ static ssize_t file_writer_write(void* ptr, const uint8_t* buf, size_t n) {
   return result;
 }
 
-static void file_writer_reset(void* ctx) {
+static void file_writer_reset(IoWriter* ctx) {
   (void)ctx;
 }
 
-static void file_writer_deinit(void** ptr) {
-  if (!ptr || !*ptr)
+static void file_writer_deinit(IoWriter* ptr) {
+  const auto w = (FileWriter*)ptr;
+  if (!w)
     return;
 
-  FileWriter* w = *ptr;
   if (w->close)
     close(w->fd);
-  free(w);
-  *ptr = nullptr;
+  *w = (FileWriter){};
 }
 
-Option(IoWriter)
-    file_writer_new(const char* file, const bool close_on_deinit, const int oflag) {
+static const IoWriterVT file_writer_vtable = {
+    .write = file_writer_write,
+    .reset = file_writer_reset,
+    .deinit = file_writer_deinit,
+};
+
+IoWriter* file_writer_new(const char* file, const bool close_on_deinit, const int oflag) {
   FileWriter* instance = malloc(sizeof(FileWriter));
-  if (!instance) {
-    return None(IoWriter);
-  }
+  if (!instance)
+    return nullptr;
 
   // TODO: permissions?
   const int fd = open(file, O_WRONLY | oflag, 0644);
   if (fd < 0) {
     ssl_log_err("file_writer: open(%s): %s\n", file, strerror(errno));
     free(instance);
-    return None(IoWriter);
+    return nullptr;
   }
 
-  *instance = (FileWriter){.fd = fd, .close = close_on_deinit};
-
-  return (Option(IoWriter))Some(((IoWriter){
-      .instance = instance,
-      .write = file_writer_write,
-      .reset = file_writer_reset,
-      .deinit = file_writer_deinit,
-  }));
+  *instance = (FileWriter){
+      .base = {.vt = &file_writer_vtable}, .fd = fd, .close = close_on_deinit};
+  return (IoWriter*)instance;
 }
 
-const IoWriter io_stdout = {
-    .instance = &(FileWriter){.fd = STDOUT_FILENO, .close = false},
-    .write = file_writer_write,
-    .reset = file_writer_reset,
-    .deinit = nil_writer_deinit_fn,
+const IoWriter* io_stdout = (IoWriter*)&(FileWriter){
+    .base =
+        {
+            .vt = &(IoWriterVT){.write = file_writer_write,
+                                .reset = file_writer_reset,
+                                .deinit = nullptr},
+        },
+    .fd = STDOUT_FILENO,
+    .close = false,
 };
 
 ssize_t io_copy(IoReader* reader, IoWriter* writer) {

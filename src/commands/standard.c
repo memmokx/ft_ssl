@@ -31,57 +31,58 @@ static Operation command_operation(cli_flags_t* flags) {
   return op;
 }
 
-static Option(IoReader)
-    base64_reader(IoReader* parent, const Operation op, const cli_flag_t* input_flag) {
+static bool base64_reader(IoReader** reader,
+                          const Operation op,
+                          const cli_flag_t* input_flag) {
   if (input_flag) {
     const string* file = &input_flag->value.str;
     const auto tmp = file_reader_new(file->ptr, true);
-    option_let_some_else(tmp, *parent) else {
+    if (!tmp) {
       logerr("Unable to open input file\n");
-      goto err;
+      return false;
     }
+
+    *reader = tmp;
   }
 
-  // We need to read base64 data, so wrap the parent with a base64 reader.
   if (op == OP_DECODE) {
-    const auto tmp = b64_reader_new(parent, true);
-    if (option_is_none(tmp)) {
+    const auto tmp = b64_reader_new(*reader, true);
+    if (!tmp) {
       logerr("Out of memory\n");
-      goto err;
+      return false;
     }
 
-    return tmp;
+    *reader = tmp;
   }
 
-  return (Option(IoReader))Some(*parent);
-err:
-  return None(IoReader);
+  return true;
 }
 
-static Option(IoWriterCloser)
-    base64_writer(IoWriter* parent, const Operation op, const cli_flag_t* output_flag) {
+static bool base64_writer(IoWriter** writer,
+                          const Operation op,
+                          const cli_flag_t* output_flag) {
   if (output_flag) {
     const string* file = &output_flag->value.str;
     const auto tmp = file_writer_new(file->ptr, true, O_CREAT | O_TRUNC);
-    option_let_some_else(tmp, *parent) else {
+    if (!tmp) {
       logerr("Unable to open output file\n");
-      goto err;
+      return false;
     }
+
+    *writer = tmp;
   }
 
   if (op == OP_ENCODE) {
-    const auto tmp = b64_writer_new(parent);
-    if (option_is_none(tmp)) {
+    const auto tmp = b64_writer_new(*writer);
+    if (!tmp) {
       logerr("Out of memory\n");
-      goto err;
+      return false;
     }
 
-    return tmp;
+    *writer = tmp;
   }
 
-  return (Option(IoWriterCloser))Some(io_writer_closer_from(*parent));
-err:
-  return None(IoWriterCloser);
+  return true;
 }
 
 int base64_command_impl(string command,
@@ -97,34 +98,29 @@ int base64_command_impl(string command,
   const cli_flag_t* input_flag = cli_flags_get(flags, BASE64_FLAG_INPUT);
   const cli_flag_t* output_flag = cli_flags_get(flags, BASE64_FLAG_OUTPUT);
 
-  IoReader input = io_stdin;
-  IoWriter output = io_stdout;
+  auto reader = (IoReader*)io_stdin;
+  auto writer = (IoWriter*)io_stdout;
 
-  IoReader reader = {};
-  IoWriterCloser writer = {};
-
-  const Option(IoReader) oreader = base64_reader(&input, op, input_flag);
-  option_let_some_else(oreader, reader) else {
+  if (!base64_reader(&reader, op, input_flag)) {
     exit_code = 1;
     goto done;
   }
 
-  const Option(IoWriterCloser) owriter = base64_writer(&output, op, output_flag);
-  option_let_some_else(owriter, writer) else {
+  if (!base64_writer(&writer, op, output_flag)) {
     exit_code = 1;
     goto done;
   }
 
-  if (io_copy(&reader, (IoWriter*)&writer) < 0) {
+  if (io_copy(reader, writer) < 0) {
     logerr("I/O error\n");
     exit_code = EXIT_FAILURE;
   }
 
 done:
-  io_writer_close(&writer);
+  io_writer_close(writer);
 
-  io_reader_deinit(&reader);
-  io_writer_deinit((IoWriter*)&writer);
+  io_free(writer);
+  io_free(reader);
 
   return exit_code;
 }

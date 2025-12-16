@@ -189,7 +189,7 @@ done:
 static constexpr char magic[] = {'S', 'a', 'l', 't', 'e', 'd', '_', '_'};
 static_assert(sizeof(magic) == sizeof(uint64_t));
 
-static fssl_error_t cipher_fill_salt(const IoReader* reader,
+static fssl_error_t cipher_fill_salt(IoReader* reader,
                                      const Operation operation,
                                      const cli_flag_t* sf,
                                      uint8_t* salt) {
@@ -246,16 +246,15 @@ static string cipher_get_password(const Operation operation,
   return password;
 }
 
-static __attribute_maybe_unused__ DeriveResult cipher_derive_data(
-    const IoReader* reader,
-    const Operation operation,
-    const cli_flag_t* kf,
-    const cli_flag_t* pf,
-    const cli_flag_t* sf,
-    const cli_flag_t* ivf,
-    const size_t key_size,
-    const size_t iv_size,
-    fssl_error_t* err) {
+static DeriveResult cipher_derive_data(IoReader* reader,
+                                       const Operation operation,
+                                       const cli_flag_t* kf,
+                                       const cli_flag_t* pf,
+                                       const cli_flag_t* sf,
+                                       const cli_flag_t* ivf,
+                                       const size_t key_size,
+                                       const size_t iv_size,
+                                       fssl_error_t* err) {
   fssl_error_t status = FSSL_SUCCESS;
   uint8_t salt[CIPHER_MAX_SALT_LEN], key[CIPHER_MAX_KEY_LEN], iv[CIPHER_MAX_IV_LEN];
   string password = {};
@@ -316,136 +315,91 @@ done:
   return result;
 }
 
-static __attribute_maybe_unused__ IoReader* cipher_get_reader(IoReader* parent,
-                                                              const Operation operation,
-                                                              const cli_flag_t* input,
-                                                              const bool base64) {
-  IoReader reader = *parent;
-
+static bool cipher_set_reader(IoReader** reader,
+                              const Operation op,
+                              const cli_flag_t* input,
+                              const bool base64) {
   if (input) {
     const string* file = &input->value.str;
     const auto tmp = file_reader_new(file->ptr, true);
-    option_let_some_else(tmp, *parent) else {
+    if (!tmp) {
       logerr("Unable to open input file\n");
-      goto err;
-    }
-
-    reader = *parent;
-  }
-
-  if (base64 && operation == OP_DECRYPT) {
-    const auto tmp = b64_reader_new(parent, true);
-    option_let_some_else(tmp, reader) else {
-      logerr("Out of memory\n");
-      goto err;
-    }
-  }
-
-  IoReader* ptr = malloc(sizeof(IoReader));
-  if (!ptr)
-    goto err;
-  *ptr = reader;
-  return ptr;
-
-err:
-  io_reader_deinit(&reader);
-  return nullptr;
-}
-
-static __attribute_maybe_unused__ IoWriterCloser* cipher_get_writer(
-    IoWriter* parent,
-    const Operation operation,
-    const cli_flag_t* output,
-    const bool base64) {
-  IoWriterCloser writer = io_writer_closer_from(*parent);
-
-  if (output) {
-    const auto file = &output->value.str;
-    const auto tmp = file_writer_new(file->ptr, true, O_CREAT | O_TRUNC);
-    option_let_some_else(tmp, *parent) else {
-      logerr("Unable to open output file\n");
-      goto err;
-    }
-
-    writer = io_writer_closer_from(*parent);
-  }
-
-  if (base64 && operation == OP_ENCRYPT) {
-    const auto tmp = b64_writer_new(parent);
-    option_let_some_else(tmp, writer) else {
-      logerr("Out of memory\n");
-      goto err;
-    }
-  }
-
-  IoWriterCloser* ptr = malloc(sizeof(IoWriterCloser));
-  if (!ptr)
-    goto err;
-  *ptr = writer;
-  return ptr;
-
-err:
-  io_writer_close(&writer);
-  io_writer_deinit((IoWriter*)&writer);
-  return nullptr;
-}
-
-static bool cipher_crypto_io_init(fssl_cipher_t* ctx,
-                                  const Operation operation,
-                                  IoReader** reader,
-                                  IoWriterCloser** writer,
-                                  IoReader** discarded_reader,
-                                  IoWriterCloser** discarded_writer) {
-  switch (operation) {
-    case OP_ENCRYPT: {
-      const auto tmp = cipher_writer_new(*writer, ctx);
-      if (option_is_none(tmp)) {
-        logerr("Out of memory\n");
-        return false;
-      }
-
-      IoWriterCloser* ptr = malloc(sizeof(IoWriterCloser));
-      if (!ptr) {
-        logerr("Out of memory\n");
-        io_writer_deinit((IoWriter*)&option_some(tmp));
-        return false;
-      }
-
-      *discarded_writer = *writer;
-      *ptr = option_some(tmp);
-      *writer = ptr;
-
-      break;
-    }
-
-    case OP_DECRYPT: {
-      const auto tmp = cipher_reader_new(*reader, ctx);
-      if (option_is_none(tmp)) {
-        logerr("Out of memory\n");
-        return false;
-      }
-
-      IoReader* ptr = malloc(sizeof(IoReader));
-      if (!ptr) {
-        logerr("Out of memory\n");
-        io_reader_deinit((IoReader*)&option_some(tmp));
-        return false;
-      }
-
-      *discarded_reader = *reader;
-      *ptr = option_some(tmp);
-      *reader = ptr;
-      break;
-    }
-
-    default:
       return false;
+    }
+
+    *reader = tmp;
+  }
+
+  if (base64 && op == OP_DECRYPT) {
+    const auto tmp = b64_reader_new(*reader, true);
+    if (!tmp) {
+      logerr("Out of memory\n");
+      return false;
+    }
+
+    *reader = tmp;
   }
 
   return true;
 }
 
-#include <stdio.h>
+static bool cipher_set_writer(IoWriter** writer,
+                              const Operation op,
+                              const cli_flag_t* output,
+                              const bool base64) {
+  if (output) {
+    const string* file = &output->value.str;
+    const auto tmp = file_writer_new(file->ptr, true, O_CREAT | O_TRUNC);
+    if (!tmp) {
+      logerr("Unable to open output file\n");
+      return false;
+    }
+
+    *writer = tmp;
+  }
+
+  if (base64 && op == OP_ENCRYPT) {
+    const auto tmp = b64_writer_new(*writer);
+    if (!tmp) {
+      logerr("Out of memory\n");
+      return false;
+    }
+
+    *writer = tmp;
+  }
+
+  return true;
+}
+
+static bool cipher_crypto_io_init(fssl_cipher_t* ctx,
+                                  const Operation op,
+                                  IoReader** reader,
+                                  IoWriter** writer) {
+  switch (op) {
+    case OP_ENCRYPT: {
+      const auto tmp = cipher_writer_new(*writer, ctx);
+      if (!tmp) {
+        logerr("Out of memory\n");
+        return false;
+      }
+      *writer = tmp;
+      break;
+    }
+    case OP_DECRYPT: {
+      const auto tmp = cipher_reader_new(*reader, ctx);
+      if (!tmp) {
+        logerr("Out of memory\n");
+        return false;
+      }
+      *reader = tmp;
+    }
+    default:
+      ssl_log_err("Unknown operation\n");
+      return false;
+  }
+
+  return true;
+}
 
 int cipher_command_impl(string command,
                         const cli_command_data* data,
@@ -486,14 +440,15 @@ int cipher_command_impl(string command,
 
   const size_t iv_size = fssl_cipher_iv_size(&cipher);
 
-  IoReader input = io_stdin;
-  IoWriter output = io_stdout;
+  auto reader = (IoReader*)io_stdin;
+  auto writer = (IoWriter*)io_stdout;
+  // IoReader input = io_stdin;
+  // IoWriter output = io_stdout;
 
-  IoReader *reader = nullptr, *discarded_reader = nullptr;
-  IoWriterCloser *writer = nullptr, *discarded_writer = nullptr;
-
-  reader = cipher_get_reader(&input, operation, input_flag, base64);
-  if (!reader) {
+  // IoReader *reader = nullptr, *discarded_reader = nullptr;
+  // IoWriterCloser *writer = nullptr, *discarded_writer = nullptr;
+  //
+  if (!cipher_set_reader(&reader, operation, input_flag, base64)) {
     exit_code = EXIT_FAILURE;
     goto done;
   }
@@ -506,8 +461,7 @@ int cipher_command_impl(string command,
     goto done;
   }
 
-  writer = cipher_get_writer(&output, operation, output_flag, base64);
-  if (!writer) {
+  if (!cipher_set_writer(&writer, operation, output_flag, base64)) {
     exit_code = EXIT_FAILURE;
     goto done;
   }
@@ -517,15 +471,13 @@ int cipher_command_impl(string command,
   //  2. You provided a salt via the flags.
   const bool has_salt = (!key_flag || password_flag) && !salt_flag;
   if (has_salt && operation == OP_ENCRYPT) {
-    if (io_writer_write((IoWriter*)writer, (uint8_t*)magic, sizeof(magic)) !=
-        sizeof(magic)) {
+    if (io_writer_write(writer, (uint8_t*)magic, sizeof(magic)) != sizeof(magic)) {
       logerr("Error writing to output file\n");
       exit_code = EXIT_FAILURE;
       goto done;
     }
 
-    if (io_writer_write((IoWriter*)writer, derived.salt, CIPHER_SALT_LEN) !=
-        CIPHER_SALT_LEN) {
+    if (io_writer_write(writer, derived.salt, CIPHER_SALT_LEN) != CIPHER_SALT_LEN) {
       logerr("Error writing to output file\n");
       exit_code = EXIT_FAILURE;
       goto done;
@@ -536,31 +488,32 @@ int cipher_command_impl(string command,
   if (iv_size != 0)
     fssl_cipher_set_iv(&cipher, &(fssl_slice_t){derived.iv, iv_size});
 
-  if (!cipher_crypto_io_init(&cipher, operation, &reader, &writer, &discarded_reader,
-                             &discarded_writer)) {
+  if (!cipher_crypto_io_init(&cipher, operation, &reader, &writer)) {
     exit_code = EXIT_FAILURE;
     goto done;
   }
 
-  if (io_copy(reader, (IoWriter*)writer) < 0) {
+  if (io_copy(reader, writer) < 0) {
     logerr("I/O error\n");
     exit_code = EXIT_FAILURE;
   }
 
 done:
   io_writer_close(writer);
-  io_writer_deinit((IoWriter*)writer);
-
-  io_reader_deinit(reader);
-
-  if (reader)
-    free(reader);
-  if (writer)
-    free(writer);
-  if (discarded_reader)
-    free(discarded_reader);
-  if (discarded_writer)
-    free(discarded_writer);
+  io_free(writer);
+  io_free(reader);
+  // io_writer_deinit((IoWriter*)writer);
+  //
+  // io_reader_deinit(reader);
+  //
+  // if (reader)
+  //   free(reader);
+  // if (writer)
+  //   free(writer);
+  // if (discarded_reader)
+  //   free(discarded_reader);
+  // if (discarded_writer)
+  //   free(discarded_writer);
   fssl_cipher_deinit(&cipher);
   return exit_code;
 }
