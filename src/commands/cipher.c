@@ -442,12 +442,7 @@ int cipher_command_impl(string command,
 
   auto reader = (IoReader*)io_stdin;
   auto writer = (IoWriter*)io_stdout;
-  // IoReader input = io_stdin;
-  // IoWriter output = io_stdout;
 
-  // IoReader *reader = nullptr, *discarded_reader = nullptr;
-  // IoWriterCloser *writer = nullptr, *discarded_writer = nullptr;
-  //
   if (!cipher_set_reader(&reader, operation, input_flag, base64)) {
     exit_code = EXIT_FAILURE;
     goto done;
@@ -500,20 +495,10 @@ int cipher_command_impl(string command,
 
 done:
   io_writer_close(writer);
+
   io_free(writer);
   io_free(reader);
-  // io_writer_deinit((IoWriter*)writer);
-  //
-  // io_reader_deinit(reader);
-  //
-  // if (reader)
-  //   free(reader);
-  // if (writer)
-  //   free(writer);
-  // if (discarded_reader)
-  //   free(discarded_reader);
-  // if (discarded_writer)
-  //   free(discarded_writer);
+
   fssl_cipher_deinit(&cipher);
   return exit_code;
 }
