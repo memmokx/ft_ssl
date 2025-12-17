@@ -29,7 +29,10 @@ FSSL_SRC = src/fssl/encoding.c \
 CLI_SRC = src/cli/app.c src/cli/node.c
 MAIN_SRC = src/main.c \
 		src/cli.c \
-		src/io.c \
+		src/io/io.c \
+		src/io/base64.c \
+		src/io/file.c \
+		src/io/cipher.c \
 		src/commands/digest.c \
 		src/commands/cipher.c \
 		src/commands/standard.c

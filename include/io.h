@@ -1,8 +1,21 @@
 #ifndef SSL_IO_H
 #define SSL_IO_H
 
+#include <fssl/fssl.h>
 #include <fcntl.h>
 #include "common.h"
+#include <libft/memory.h>
+
+#define IO_READER_RETARGET(_ptr, _len, _buf) \
+  do {                                       \
+    if (_ptr > 0 && _ptr < _len) {           \
+      const size_t _rest = _len - _ptr;      \
+      ft_memmove(_buf, _buf + _ptr, _rest);  \
+      _len = _rest;                          \
+      _ptr = 0;                              \
+    } else if (_ptr >= _len)                 \
+      _ptr = _len = 0;                       \
+  } while (false)
 
 typedef struct IoReader IoReader;
 typedef struct IoWriter IoWriter;
@@ -28,17 +41,6 @@ struct IoWriter {
   const IoWriterVT* vt;
 };
 
-
-typedef struct {
-  IoWriter base;
-  IoWriter* inner;
-
-  uint8_t output[1024];
-  size_t buflen;
-
-  uint8_t buf[3];
-} Base64Writer;
-
 typedef struct {
   IoReader base;
   int fd;
@@ -63,11 +65,8 @@ void io_writer_reset(IoWriter* writer);
 void io_writer_free(IoWriter* writer);
 void io_writer_close(IoWriter* writer);
 
-#define io_free(x)                \
-  _Generic((x),                   \
-      IoReader *: io_reader_free, \
-      IoWriter *: io_writer_free, \
-      default: nullptr)(x)
+#define io_free(x) \
+  _Generic((x), IoReader*: io_reader_free, IoWriter*: io_writer_free, default: nullptr)(x)
 
 IoReader* b64_reader_new(IoReader* parent, bool ignore_nl);
 IoReader* file_reader_new(const char* file, bool close_on_deinit);
@@ -82,7 +81,6 @@ IoReader* file_reader_new(const char* file, bool close_on_deinit);
  * @return \c nullptr if memory allocation fail. On success: new CipherReader object.
  */
 IoReader* cipher_reader_new(IoReader* parent, fssl_cipher_t* cipher);
-
 
 /*!
  * Create a new CipherWriter which encrypts data it receives using the given \a `cipher`.
