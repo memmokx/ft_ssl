@@ -18,6 +18,9 @@ declmode(cfb, static);
 declmode(ofb, static);
 declmode(pcbc, static);
 
+static const auto ERR_INVALID_MODE = libft_static_string(
+    "fssl: internal error: the given block mode and cipher pair is invalid\n");
+
 fssl_error_t fssl_cipher_new(fssl_cipher_t* cipher,
                              const fssl_cipher_desc_t* desc,
                              const fssl_cipher_mode_t mode) {
@@ -62,9 +65,15 @@ fssl_error_t fssl_cipher_new(fssl_cipher_t* cipher,
       setmodefunc(pcbc_encrypt, pcbc_decrypt);
       break;
     default:
+      if (mode == CIPHER_MODE_STREAM && desc->type != CIPHER_STREAM) {
+        err = FSSL_ERR_INVALID_ARGUMENT;
+        write(STDERR_FILENO, ERR_INVALID_MODE.ptr, ERR_INVALID_MODE.len);
+      }
       break;
   }
 done:
+  if (fssl_haserr(err) && c.instance)
+    free(c.instance);
   *cipher = fssl_haserr(err) ? (fssl_cipher_t){} : c;
   return err;
 }
@@ -103,6 +112,9 @@ fssl_force_inline fssl_error_t fssl_cipher_set_key(fssl_cipher_t* cipher,
   return cipher->desc->init(cipher->instance, key);
 }
 
+static const auto ERR_BLOCK_SIZE_TOO_SMALL = libft_static_string(
+    "fssl: internal error: block size is too small for CTR mode\n");
+
 static fssl_force_inline size_t fssl_cipher_iv_size_internal(const fssl_cipher_t* cipher) {
   switch (cipher->mode) {
     case CIPHER_MODE_ECB:
@@ -117,9 +129,7 @@ static fssl_force_inline size_t fssl_cipher_iv_size_internal(const fssl_cipher_t
       const size_t block_size = fssl_cipher_block_size(cipher);
       // Even if this is highly insecure the minimum block_size we accept is 8
       if (block_size < 2 * sizeof(uint32_t)) {
-        const auto err = libft_static_string(
-            "fssl: internal error: block size is too small for CTR mode\n");
-        write(STDERR_FILENO, err.ptr, err.len);
+        write(STDERR_FILENO, ERR_BLOCK_SIZE_TOO_SMALL.ptr, ERR_BLOCK_SIZE_TOO_SMALL.len);
         __builtin_trap();
       }
 
@@ -202,6 +212,20 @@ fssl_force_inline size_t fssl_cipher_key_size(const fssl_cipher_t* cipher) {
 
 fssl_force_inline size_t fssl_cipher_iv_size(const fssl_cipher_t* cipher) {
   return fssl_cipher_iv_size_internal(cipher);
+}
+
+fssl_force_inline bool fssl_cipher_streamable(const fssl_cipher_t* cipher) {
+  if (cipher->desc->type != CIPHER_BLOCK)
+    return true;
+
+  switch (cipher->mode) {
+    case CIPHER_MODE_CTR:
+    case CIPHER_MODE_CFB:
+    case CIPHER_MODE_OFB:
+      return true;
+    default:
+      return false;
+  }
 }
 
 static ssize_t ecb_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {

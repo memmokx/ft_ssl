@@ -8,7 +8,7 @@ typedef struct {
   fssl_cipher_t* cipher;
 
   bool eof;
-  
+
   // Decryption buffer
   uint8_t dbuf[IO_ENC_BUFFER_SIZE + FSSL_MAX_BLOCK_SIZE];
   size_t dbuflen;

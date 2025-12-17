@@ -102,6 +102,7 @@ fssl_cipher_type_t fssl_cipher_type(const fssl_cipher_t* cipher);
 size_t fssl_cipher_block_size(const fssl_cipher_t* cipher);
 size_t fssl_cipher_key_size(const fssl_cipher_t* cipher);
 size_t fssl_cipher_iv_size(const fssl_cipher_t* cipher);
+bool fssl_cipher_streamable(const fssl_cipher_t* cipher);
 
 ssize_t fssl_cipher_encrypt(fssl_cipher_t* cipher,
                             const uint8_t* in,
