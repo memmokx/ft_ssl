@@ -269,6 +269,21 @@ typedef struct {
   uint8_t buf[3];
 } Base64Writer;
 
+static ssize_t b64_writer_flush(Base64Writer* ctx, const uint8_t* data, const size_t len) {
+  size_t written = 0;
+  const fssl_error_t err =
+      fssl_base64_encode(data, len, (char*)ctx->output, sizeof(ctx->output), &written);
+  if (fssl_haserr(err)) {
+    ssl_log_warn("b64_writer: encode err: %s\n", fssl_error_string(err));
+    return -1;
+  }
+
+  if (io_writer_write(ctx->inner, ctx->output, written) < 0)
+    return -1;
+
+  return (ssize_t)written;
+}
+
 static ssize_t b64_writer_write(IoWriter* ptr, const uint8_t* buf, size_t n) {
   const auto ctx = (Base64Writer*)ptr;
   if (!ctx || !buf)
@@ -276,29 +291,17 @@ static ssize_t b64_writer_write(IoWriter* ptr, const uint8_t* buf, size_t n) {
 
   size_t w = 0;
   if (ctx->buflen > 0) {
-    size_t i = 0;
-    for (; i < n && ctx->buflen < 3; ++i)
-      ctx->buf[ctx->buflen++] = buf[i];
-
-    w += i;
-    buf += i;
-    n -= i;
-    if (ctx->buflen < 3)
-      goto done;
-
-    size_t written = 0;
-    const fssl_error_t err =
-        fssl_base64_encode(ctx->buf, ctx->buflen, (char*)ctx->output,
-                           sizeof(ctx->output), &written);
-    if (fssl_haserr(err)) {
-      ssl_log_warn("b64_writer: encode err: %s\n", fssl_error_string(err));
-      return -1;
+    while (n > 0 && ctx->buflen < 3) {
+      ctx->buf[ctx->buflen++] = buf[w];
+      n--;
+      w++;
     }
 
-    ssl_assert(written == 4);
-
-    if (io_writer_write(ctx->inner, ctx->output, written) < 0)
+    if (ctx->buflen < 3)
+      goto done;
+    if (b64_writer_flush(ctx, ctx->buf, sizeof(ctx->buflen)) < 0)
       return -1;
+
     ctx->buflen = 0;
   }
 
@@ -309,29 +312,17 @@ static ssize_t b64_writer_write(IoWriter* ptr, const uint8_t* buf, size_t n) {
 
     ssl_assert(chunk_size % 3 == 0);
 
-    size_t written = 0;
-    const fssl_error_t err = fssl_base64_encode(buf, chunk_size, (char*)ctx->output,
-                                                sizeof(ctx->output), &written);
-    if (fssl_haserr(err)) {
-      ssl_log_warn("b64_writer: encode err: %s\n", fssl_error_string(err));
-      return -1;
-    }
-
-    ssl_assert(written == fssl_base64_encoded_size(chunk_size));
-
-    // TODO: set error state?
-    if (io_writer_write(ctx->inner, ctx->output, written) < 0)
+    if (b64_writer_flush(ctx, buf + w, chunk_size) < 0)
       return -1;
 
     w += chunk_size;
-    buf += chunk_size;
     n -= chunk_size;
   }
 
-  if (n != 0) {
-    ft_memcpy(ctx->buf, buf, n);
-    ctx->buflen = n;
-    w += n;
+  while (n > 0) {
+    ctx->buf[ctx->buflen++] = buf[w];
+    n--;
+    w++;
   }
 
 done:
@@ -366,19 +357,8 @@ static void b64_writer_close(IoWriter* ptr) {
   if (!ctx)
     return;
 
-  if (ctx->buflen > 0) {
-    size_t written = 0;
-    const fssl_error_t err =
-        fssl_base64_encode(ctx->buf, ctx->buflen, (char*)ctx->output,
-                           sizeof(ctx->output), &written);
-    if (fssl_haserr(err)) {
-      ssl_log_warn("b64_writer: encode err: %s\n", fssl_error_string(err));
-      return;  // TODO: error
-    }
-
-    if (io_writer_write(ctx->inner, ctx->output, written) < 0)
-      return;
-  }
+  if (ctx->buflen > 0)
+    b64_writer_flush(ctx, ctx->buf, ctx->buflen);
 }
 
 static const IoWriterVT b64_writer_vtable = {
