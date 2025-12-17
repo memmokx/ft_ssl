@@ -215,7 +215,7 @@ fssl_force_inline size_t fssl_cipher_iv_size(const fssl_cipher_t* cipher) {
 }
 
 fssl_force_inline bool fssl_cipher_streamable(const fssl_cipher_t* cipher) {
-  if (cipher->desc->type != CIPHER_BLOCK)
+  if (cipher->desc->type == CIPHER_STREAM)
     return true;
 
   switch (cipher->mode) {
