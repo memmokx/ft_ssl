@@ -2,23 +2,13 @@
 
 #define IO_ENC_BUFFER_SIZE (8192 * 2)
 
-typedef enum {
-  CIPHER_READER_COPY,
-  CIPHER_READER_FETCH,
-  CIPHER_READER_DECRYPT,
-  CIPHER_READER_EOF,
-  CIPHER_READER_ERROR,
-  CIPHER_READER_FINISHED,
-} cipher_reader_state_t;
-
 typedef struct {
   IoReader base;
   IoReader* inner;
   fssl_cipher_t* cipher;
 
   bool eof;
-  cipher_reader_state_t state;
-
+  
   // Decryption buffer
   uint8_t dbuf[IO_ENC_BUFFER_SIZE + FSSL_MAX_BLOCK_SIZE];
   size_t dbuflen;
