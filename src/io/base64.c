@@ -1,7 +1,5 @@
 #include "io.h"
 
-// --- Base64 reader
-
 typedef enum {
   // We simply copy data from the `output` buffer to the user buffer.
   B64_READER_COPY,

@@ -95,7 +95,6 @@ IoWriter* file_writer_new(const char* file, const bool close_on_deinit, const in
   if (!instance)
     return nullptr;
 
-  // TODO: permissions?
   const int fd = open(file, O_WRONLY | oflag, 0644);
   if (fd < 0) {
     ssl_log_err("file_writer: open(%s): %s\n", file, strerror(errno));
