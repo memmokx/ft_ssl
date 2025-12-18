@@ -351,12 +351,13 @@ static void b64_writer_deinit(IoWriter* ptr) {
 
 static void b64_writer_close(IoWriter* ptr) {
   const auto ctx = (Base64Writer*)ptr;
-
   if (!ctx)
     return;
 
   if (ctx->buflen > 0)
     b64_writer_flush(ctx, ctx->buf, ctx->buflen);
+
+  io_writer_close(ctx->inner);
 }
 
 static const IoWriterVT b64_writer_vtable = {
