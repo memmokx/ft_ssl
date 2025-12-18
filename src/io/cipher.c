@@ -222,6 +222,7 @@ IoReader* cipher_reader_new(IoReader* parent, fssl_cipher_t* cipher) {
       .base = {.vt = &cipher_reader_vtable},
       .inner = parent,
       .cipher = cipher,
+      .streamable = fssl_cipher_streamable(cipher),
       .block_size = fssl_cipher_block_size(cipher),
   };
 

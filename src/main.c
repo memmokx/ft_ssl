@@ -3,7 +3,7 @@
 extern uint8_t g_failed;
 extern char* fssl_cli_usage;
 
-#if FSSL_CLI_FEATURES > FSSL_MD5_BONUS
+#if FSSL_CLI_FEATURES > FSSL_MD5_VANILLA
 int cli_interactive_mode(App* app);
 #endif
 
