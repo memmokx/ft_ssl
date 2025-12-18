@@ -41,17 +41,6 @@ struct IoWriter {
   const IoWriterVT* vt;
 };
 
-typedef struct {
-  IoReader base;
-  int fd;
-  bool close;
-} FileReader;
-
-typedef struct {
-  IoWriter base;
-  int fd;
-  bool close;
-} FileWriter;
 
 extern const IoReader* io_stdin;
 extern const IoWriter* io_stdout;

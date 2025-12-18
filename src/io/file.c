@@ -4,6 +4,18 @@
 #include <fcntl.h>
 #include <string.h>
 
+typedef struct {
+  IoReader base;
+  int fd;
+  bool close;
+} FileReader;
+
+typedef struct {
+  IoWriter base;
+  int fd;
+  bool close;
+} FileWriter;
+
 static ssize_t file_reader_read(IoReader* ptr, uint8_t* buf, const size_t n) {
   const auto ctx = (FileReader*)ptr;
   if (!ctx || !buf)
