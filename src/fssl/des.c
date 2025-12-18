@@ -181,6 +181,9 @@ static fssl_force_inline uint32_t feistel(const uint32_t x, uint64_t k) {
 void fssl_des_encrypt_block(void* ptr, const uint8_t* in, uint8_t* out) {
   const fssl_des_ctx* ctx = ptr;
 
+  if (in == nullptr)
+    in = out;
+
   // Initial permutation
   const uint64_t block = pbox(fssl_be_read_u64(in), ip, sizeof(ip), 64);
 

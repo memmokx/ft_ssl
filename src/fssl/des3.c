@@ -17,8 +17,11 @@ fssl_error_t fssl_des3_init(void* ctx, const uint8_t* key) {
 static void fssl_des3_encrypt_block(void* ctx, const uint8_t* in, uint8_t* out) {
   fssl_des3_ctx* des3 = ctx;
 
-  if (!ctx || !in || !out)
+  if (!ctx || !out)
     return;
+
+  if (!in)
+    in = out;
 
   // E_k1(D_k2(E_k3(plaintext)))
   fssl_des_encrypt_block(&des3->c1, in, out);
