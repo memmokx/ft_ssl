@@ -48,7 +48,7 @@ static b64_reader_state_t b64_reader_copy(Base64Reader* ctx,
   if (available == 0)
     return B64_READER_DECODE;
 
-  const size_t usable = min(available, n - *w);
+  const size_t usable = ssl_min(available, n - *w);
   ft_memcpy(buf + *w, ctx->output + ctx->optr, usable);
   ctx->optr += usable;
   *w += usable;
@@ -74,7 +74,7 @@ static b64_reader_state_t b64_reader_decode(Base64Reader* ctx) {
   IO_READER_RETARGET(ctx->optr, ctx->olen, ctx->output);
 
   const size_t ocap = sizeof(ctx->output) - ctx->olen;
-  const size_t n = min(remaining / 4 * 4, fssl_base64_encoded_size(ocap));
+  const size_t n = ssl_min(remaining / 4 * 4, fssl_base64_encoded_size(ocap));
   if (n < 4)
     return B64_READER_COPY;  // The caller need to process some data
 

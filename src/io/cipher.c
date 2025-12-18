@@ -37,7 +37,7 @@ static void cipher_reader_copy(CipherReader* ctx, uint8_t* buf, const size_t n, 
   if (available == 0)
     return;
 
-  const size_t usable = min(available, n - *w);
+  const size_t usable = ssl_min(available, n - *w);
   ft_memcpy(buf + *w, ctx->dbuf + ctx->dbufptr, usable);
   ctx->dbufptr += usable;
   *w += usable;
@@ -251,7 +251,7 @@ typedef struct {
 static void cipher_writer_fill(CipherWriter* ctx, const uint8_t* buf,
                                const size_t n, size_t* w) {
   while (*w < n && ctx->pbuflen < sizeofpending(ctx)) {
-    const size_t available = min(sizeofpending(ctx) - ctx->pbuflen, n - *w);
+    const size_t available = ssl_min(sizeofpending(ctx) - ctx->pbuflen, n - *w);
     ft_memmove(ctx->pbuf + ctx->pbuflen, buf + *w, available);
 
     *w += available;

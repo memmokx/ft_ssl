@@ -4,7 +4,7 @@
 #include <libft/io.h>
 #include <stdint.h>
 
-#define min(a, b)      \
+#define ssl_min(a, b)      \
   ({                   \
     auto _a = (a);     \
     auto _b = (b);     \
