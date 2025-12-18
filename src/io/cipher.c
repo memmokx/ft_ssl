@@ -235,6 +235,7 @@ typedef struct {
   fssl_cipher_t* cipher;
 
   size_t written;
+  bool streamable;
 
   // Pending buffer
   uint8_t pbuf[IO_ENC_BUFFER_SIZE + FSSL_MAX_BLOCK_SIZE];
@@ -247,44 +248,57 @@ typedef struct {
 
 #define sizeofpending(ctx) (sizeof((ctx)->pbuf) - FSSL_MAX_BLOCK_SIZE)
 
+static void cipher_writer_fill(CipherWriter* ctx, const uint8_t* buf,
+                               const size_t n, size_t* w) {
+  while (*w < n && ctx->pbuflen < sizeofpending(ctx)) {
+    const size_t available = min(sizeofpending(ctx) - ctx->pbuflen, n - *w);
+    ft_memmove(ctx->pbuf + ctx->pbuflen, buf + *w, available);
+
+    *w += available;
+    ctx->pbuflen += available;
+  }
+}
+
+static ssize_t cipher_writer_flush(CipherWriter* ctx, const bool final) {
+  const size_t toencrypt = ctx->pbuflen - (ctx->streamable || final ? 0 : ctx->block_size);
+  const ssize_t encrypted =
+      fssl_cipher_encrypt(ctx->cipher, ctx->pbuf, ctx->ebuf, toencrypt);
+  // Erase plaintext from memory in every case, but keep the last block if not streamable
+  ft_bzero(ctx->pbuf, toencrypt);
+  if (encrypted < 0) {
+    ssl_log_err("cipher_writer: encrypt: error during encryption (n=%lu)\n", toencrypt);
+    return -1;
+  }
+
+  ssl_assert((size_t)encrypted == toencrypt);
+  // Move the last block to the front if not streamable
+  if (!ctx->streamable && !final) {
+    ft_memmove(ctx->pbuf, ctx->pbuf + toencrypt, ctx->block_size);
+    ctx->pbuflen -= encrypted;
+  } else {
+    ctx->pbuflen = 0;
+  }
+
+  if (io_writer_write(ctx->inner, ctx->ebuf, toencrypt) < 0)
+    return -1;
+
+  return 0;
+}
+
+
 /*!
  * Write \a n bytes from \a buf into the internal writer, this will encrypt them
  * beforehand. This writer will encrypt in blocks of \c IO_ENC_BUFFER_SIZE
- * @return
+ * @return The number of bytes written, or \c -1 on error.
  */
 static ssize_t cipher_writer_write(IoWriter* p, const uint8_t* buf, size_t n) {
   const auto ctx = (CipherWriter*)p;
 
   size_t w = 0;
   while (w < n) {
-    while (w < n && ctx->pbuflen < sizeofpending(ctx)) {
-      const size_t available = min(sizeofpending(ctx) - ctx->pbuflen, n - w);
-      ft_memmove(ctx->pbuf + ctx->pbuflen, buf + w, available);
-
-      w += available;
-      ctx->pbuflen += available;
-    }
-
-    if (ctx->pbuflen == sizeofpending(ctx)) {
-      const size_t toencrypt = ctx->pbuflen - ctx->block_size;
-      const ssize_t encrypted =
-          fssl_cipher_encrypt(ctx->cipher, ctx->pbuf, ctx->ebuf, toencrypt);
-      // Erase plaintext from memory in every case, but keep the last block
-      ft_bzero(ctx->pbuf, toencrypt);
-      if (encrypted < 0) {
-        ssl_log_err("cipher_writer: encrypt: error during encryption (n=%lu)\n",
-                    toencrypt);
-        return -1;
-      }
-
-      ssl_assert((size_t)encrypted == toencrypt);
-      // Move the last block to the front
-      ft_memmove(ctx->pbuf, ctx->pbuf + toencrypt, ctx->block_size);
-      ctx->pbuflen -= encrypted;
-
-      if (io_writer_write(ctx->inner, ctx->ebuf, toencrypt) < 0)
-        return -1;
-    }
+    cipher_writer_fill(ctx, buf, n, &w);
+    if (ctx->pbuflen == sizeofpending(ctx) && cipher_writer_flush(ctx, false) < 0)
+      return -1;
   }
 
   return (ssize_t)w;
@@ -318,13 +332,17 @@ static void cipher_writer_deinit(IoWriter* p) {
 /*!
  * Pad and encrypt the remaining data. Closes the underlying \c IoWriter.
  */
+
 static void cipher_writer_close(IoWriter* p) {
   const auto ctx = (CipherWriter*)p;
   if (!ctx)
     return;
 
-  if (ctx->pbuflen > 0) {
-    size_t added = 0;
+  if (ctx->pbuflen == 0)
+    goto out;
+
+  if (!ctx->streamable) {
+  size_t added = 0;
     const fssl_error_t err = fssl_pkcs5_pad(ctx->pbuf + ctx->pbuflen, ctx->pbuflen,
                                             sizeof(ctx->pbuf), ctx->block_size, &added);
     if fssl_haserr (err) {
@@ -336,17 +354,10 @@ static void cipher_writer_close(IoWriter* p) {
       ssl_log_err("cipher_writer: bad pad: block_size=%lu\n", ctx->block_size);
       goto out;
     }
-
-    const ssize_t encrypted =
-        fssl_cipher_encrypt(ctx->cipher, ctx->pbuf, ctx->ebuf, ctx->pbuflen + added);
-
-    ft_bzero(ctx->pbuf, ctx->pbuflen + added);
-    if (encrypted < 0)
-      goto out;
-
-    io_writer_write(ctx->inner, ctx->ebuf, encrypted);
-    ctx->pbuflen = 0;
+    ctx->pbuflen += added;
   }
+
+  cipher_writer_flush(ctx, true);
 
 out:
   io_writer_close(ctx->inner);
@@ -376,6 +387,7 @@ IoWriter* cipher_writer_new(IoWriter* parent, fssl_cipher_t* cipher) {
       .base = {.vt = &cipher_writer_vtable},
       .inner = parent,
       .cipher = cipher,
+      .streamable = fssl_cipher_streamable(cipher),
       .block_size = fssl_cipher_block_size(cipher),
   };
 
