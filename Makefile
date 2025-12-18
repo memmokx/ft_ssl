@@ -93,8 +93,15 @@ test: $(TESTS_BIN)
 	@echo "$(COLOUR_GREEN)Running unit tests$(COLOUR_END)"
 	./$(TESTS_BIN)
 
+BASE_LIT_TESTS = tests/cli/base64 \
+				tests/cli/md5 \
+				tests/cli/des
+
+lit-test-bonus: bonus
+	@lit --path="$(PWD)" $(BASE_LIT_TESTS) tests/cli/des-bonus
+
 lit-test: $(NAME)
-	@lit --path="$(PWD)" tests/cli/*
+	@lit --path="$(PWD)" $(BASE_LIT_TESTS)
 
 $(LIBFSSL): $(LIBFSSL_OBJ) $(LIBFT)
 	$(CC) -shared $(CFLAGS) $(LIBFSSL_OBJ) $(LIBFT) -o $@ $(LIBS) $(INCLUDE)
@@ -127,7 +134,7 @@ fclean: clean
 
 re : fclean all
 
-bonus: FSSL_CLI_FEATURES=1
+bonus: FSSL_CLI_FEATURES=$(FSSL_DES_BONUS)
 bonus: $(NAME)
 
 .PHONY: re all fclean clean lib test format bonus

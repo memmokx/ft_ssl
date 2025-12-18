@@ -1,4 +1,4 @@
 # RUN: echo "Hello World !" > %t
-# RUN: <%t openssl des3 $SSLFLAGS -pass "pass:ft_ssl_des" -S C79F563F6363B504 >%t.openssl
-# RUN: <%t ft_ssl des3 -p "ft_ssl_des" -s C79F563F6363B504 >%t.fssl
+# RUN: <%t openssl des-ede3-ofb $SSLFLAGS -pass "pass:ft_ssl_des" -S C79F563F6363B504 >%t.openssl
+# RUN: <%t ft_ssl des3-ofb -p "ft_ssl_des" -s C79F563F6363B504 >%t.fssl
 # RUN: cmp %t.fssl %t.openssl
