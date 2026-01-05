@@ -19,7 +19,6 @@ typedef struct {
   size_t buflen;
   size_t bufptr;
 
-  // TODO: implement this, CTR mode can be streamable
   bool streamable;
 
   // Are we holding the last block
