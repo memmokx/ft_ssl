@@ -1,3 +1,4 @@
+#include "fssl/cipher.h"
 #include <fssl/fssl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +18,7 @@ declmode(ctr, static);
 declmode(cfb, static);
 declmode(ofb, static);
 declmode(pcbc, static);
+declmode(stream, static);
 
 static const auto ERR_INVALID_MODE = libft_static_string(
     "fssl: internal error: the given block mode and cipher pair is invalid\n");
@@ -64,11 +66,19 @@ fssl_error_t fssl_cipher_new(fssl_cipher_t* cipher,
     case CIPHER_MODE_PCBC:
       setmodefunc(pcbc_encrypt, pcbc_decrypt);
       break;
-    default:
-      if (mode == CIPHER_MODE_STREAM && desc->type != CIPHER_STREAM) {
+    case CIPHER_MODE_STREAM:
+      if (desc->type != CIPHER_STREAM) {
         err = FSSL_ERR_INVALID_ARGUMENT;
         write(STDERR_FILENO, ERR_INVALID_MODE.ptr, ERR_INVALID_MODE.len);
+      } else {
+        if (desc->encrypt_stream == nullptr || desc->decrypt_stream == nullptr)
+          err = FSSL_ERR_INVALID_ARGUMENT;
+        setmodefunc(stream_encrypt, stream_decrypt);
       }
+      break;
+    default:
+      err = FSSL_ERR_INVALID_ARGUMENT;
+      write(STDERR_FILENO, ERR_INVALID_MODE.ptr, ERR_INVALID_MODE.len);
       break;
   }
 done:
@@ -118,6 +128,7 @@ static const auto ERR_BLOCK_SIZE_TOO_SMALL = libft_static_string(
 static fssl_force_inline size_t fssl_cipher_iv_size_internal(const fssl_cipher_t* cipher) {
   switch (cipher->mode) {
     case CIPHER_MODE_ECB:
+    case CIPHER_MODE_STREAM:
       return 0;
     case CIPHER_MODE_CBC:
     case CIPHER_MODE_OFB:
@@ -145,7 +156,8 @@ fssl_cipher_set_mode_data_internal(fssl_cipher_t* c, const fssl_slice_t iv) {
   const size_t size = iv.size;
   const uint8_t* data = iv.data;
 
-  if (size != fssl_cipher_iv_size_internal(c))
+  // Stream ciphers don't have an IV size requirement.
+  if (c->desc->type != CIPHER_STREAM && size != fssl_cipher_iv_size_internal(c))
     return FSSL_ERR_INVALID_ARGUMENT;
 
   ft_bzero(&c->mode_data, sizeof(c->mode_data));
@@ -163,6 +175,9 @@ fssl_cipher_set_mode_data_internal(fssl_cipher_t* c, const fssl_slice_t iv) {
     case CIPHER_MODE_CFB:
       ft_memcpy(c->mode_data.cfb.stream, data, size);
       break;
+    case CIPHER_MODE_STREAM:
+      if (c->desc->set_iv)
+        return c->desc->set_iv(c->instance, &iv);
     default:
       break;
   }
@@ -617,4 +632,14 @@ static ssize_t pcbc_decrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out,
   (void)out;
   (void)n;
   return -1;
+}
+
+static ssize_t stream_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
+  ctx->desc->encrypt_stream(ctx->instance, in, out, n);
+  return n;
+}
+
+static ssize_t stream_decrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
+  ctx->desc->decrypt_stream(ctx->instance, in, out, n);
+  return n;
 }

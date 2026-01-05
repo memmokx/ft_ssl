@@ -139,9 +139,9 @@ typedef struct {
     }                                                                      \
   } while (false)
 
-#define FSSL_MAX_IV_SIZE 32
-#define FSSL_MAX_BLOCK_SIZE 32
-#define FSSL_HASH_MAX_BLOCK_SIZE 128
+static constexpr auto FSSL_MAX_IV_SIZE = 32;
+static constexpr auto FSSL_MAX_BLOCK_SIZE = 32;
+static constexpr auto FSSL_HASH_MAX_BLOCK_SIZE = 128;
 
 #define fssl_wrap_hash_impl(prefix)                                                \
   static void prefix##_init_impl(void* ctx) {                                      \

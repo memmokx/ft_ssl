@@ -392,6 +392,7 @@ static bool cipher_crypto_io_init(fssl_cipher_t* ctx,
         return false;
       }
       *reader = tmp;
+      break;
     }
     default:
       ssl_log_err("Unknown operation\n");

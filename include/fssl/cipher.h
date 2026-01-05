@@ -21,7 +21,7 @@ typedef enum {
  * The different types of ciphers supported.
  */
 typedef enum {
-  /* A block cipher, when encryptin/decrypting, it must be done
+  /* A block cipher, when encrypting/decrypting, it must be done
    * on blocks whose size is a multiple of the cipher block size.
    */
   CIPHER_BLOCK,
@@ -32,6 +32,7 @@ typedef enum {
 typedef fssl_error_t (*fssl_cipher_init_fn)(void* ctx, const uint8_t* key);
 typedef void (*fssl_cipher_encrypt_fn)(void* ctx, const uint8_t* in, uint8_t* out);
 typedef void (*fssl_cipher_decrypt_fn)(void* ctx, const uint8_t* in, uint8_t* out);
+typedef fssl_error_t (*fssl_cipher_set_iv_fn)(void* ctx, const fssl_slice_t* iv);
 
 typedef void (*fssl_cipher_stream_encrypt_fn)(void* ctx,
                                               const uint8_t* in,
@@ -54,6 +55,7 @@ typedef struct {
   size_t ctx_size;
 
   fssl_cipher_init_fn init;
+  fssl_cipher_set_iv_fn set_iv;
   fssl_cipher_encrypt_fn encrypt;
   fssl_cipher_decrypt_fn decrypt;
   fssl_cipher_stream_encrypt_fn encrypt_stream;

@@ -7,3 +7,5 @@ ft_ssl
 
 /**/Output/
 .idea/
+.cache/
+compile_commands.json

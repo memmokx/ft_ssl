@@ -19,6 +19,7 @@ FSSL_SRC = src/fssl/encoding.c \
 		src/fssl/blake2s.c \
 		src/fssl/des.c \
 		src/fssl/des3.c \
+		src/fssl/chacha20.c \
 		src/fssl/cipher.c \
 		src/fssl/error.c \
 		src/fssl/password.c \
