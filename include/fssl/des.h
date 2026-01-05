@@ -3,8 +3,8 @@
 
 #include "cipher.h"
 
-#define FSSL_DES_KEY_SIZE 8
-#define FSSL_DES_BLOCK_SIZE 8
+static constexpr auto FSSL_DES_KEY_SIZE = 8;
+static constexpr auto FSSL_DES_BLOCK_SIZE = 8;
 
 typedef struct {
   uint64_t sk[16];
@@ -17,8 +17,8 @@ void fssl_des_decrypt_block(void* ctx, const uint8_t* in, uint8_t* out);
 
 extern const fssl_cipher_desc_t fssl_cipher_des;
 
-#define FSSL_DES3_KEY_SIZE (FSSL_DES_KEY_SIZE * 3)
-#define FSSL_DES3_BLOCK_SIZE FSSL_DES_BLOCK_SIZE
+static constexpr auto FSSL_DES3_KEY_SIZE = (FSSL_DES_KEY_SIZE * 3);
+static constexpr auto FSSL_DES3_BLOCK_SIZE = FSSL_DES_BLOCK_SIZE;
 
 typedef struct {
   fssl_des_ctx c1;

@@ -3,8 +3,8 @@
 
 #include "hash.h"
 
-#define FSSL_BLAKE2_SUM_SIZE 32
-#define FSSL_BLAKE2_BLOCK_SIZE 64
+static constexpr auto FSSL_BLAKE2_SUM_SIZE = 32;
+static constexpr auto FSSL_BLAKE2_BLOCK_SIZE = 64;
 
 typedef struct {
   uint32_t state[8];

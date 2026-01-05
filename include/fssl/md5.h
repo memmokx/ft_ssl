@@ -3,8 +3,8 @@
 
 #include "hash.h"
 
-#define FSSL_MD5_SUM_SIZE 16
-#define FSSL_MD5_BLOCK_SIZE 64
+static constexpr auto FSSL_MD5_SUM_SIZE = 16;
+static constexpr auto FSSL_MD5_BLOCK_SIZE = 64;
 
 typedef struct {
   uint32_t state[4];

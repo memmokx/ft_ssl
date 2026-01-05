@@ -68,7 +68,7 @@ static fssl_error_t cipher_decode_hex(const string data,
   return fssl_hex_decode(buf, encoded_size, out, expected_size, nullptr);
 }
 
-#define PBKDF2_ITER_DEFAULT 10000
+static constexpr auto PBKDF2_ITER_DEFAULT = 10000;
 
 static fssl_error_t cipher_bytes_to_key(const string password,
                                         const uint8_t* salt,
