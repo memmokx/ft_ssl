@@ -53,6 +53,7 @@ typedef struct {
   size_t block_size;
   size_t key_size;
   size_t ctx_size;
+  size_t iv_size_hint; /* For stream ciphers. For block ciphers the hint is the block_size */
 
   fssl_cipher_init_fn init;
   fssl_cipher_set_iv_fn set_iv;

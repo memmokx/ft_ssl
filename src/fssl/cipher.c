@@ -128,8 +128,9 @@ static const auto ERR_BLOCK_SIZE_TOO_SMALL = libft_static_string(
 static fssl_force_inline size_t fssl_cipher_iv_size_internal(const fssl_cipher_t* cipher) {
   switch (cipher->mode) {
     case CIPHER_MODE_ECB:
+        return 0;
     case CIPHER_MODE_STREAM:
-      return 0;
+      return cipher->desc->iv_size_hint;
     case CIPHER_MODE_CBC:
     case CIPHER_MODE_OFB:
     case CIPHER_MODE_CFB:

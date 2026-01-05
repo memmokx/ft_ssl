@@ -114,6 +114,7 @@ const fssl_cipher_desc_t fssl_cipher_chacha20 = {
     .block_size = FSSL_CHACHA20_BLOCK_SIZE,
     .key_size = FSSL_CHACHA20_KEY_SIZE,
     .ctx_size = sizeof(fssl_chacha20_ctx),
+    .iv_size_hint = FSSL_CHACHA20_IV_SIZE,
 
     .init = fssl_chacha20_init,
     .set_iv = fssl_chacha20_set_iv,
