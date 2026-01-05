@@ -1,3 +1,4 @@
+#include "common.h"
 #include "io.h"
 
 #define IO_ENC_BUFFER_SIZE (8192 * 2)
@@ -125,6 +126,9 @@ static ssize_t cipher_reader_decrypt(CipherReader* ctx, uint8_t* buf, size_t n, 
 }
 
 static ssize_t cipher_reader_unpad(CipherReader* ctx) {
+  if (!ctx->holding)
+    return 0;
+
   size_t padded = 0;
   if (fssl_pkcs5_unpad(ctx->holdbuf, ctx->block_size, ctx->block_size, &padded) !=
       FSSL_SUCCESS) {
@@ -247,8 +251,10 @@ typedef struct {
 
 #define sizeofpending(ctx) (sizeof((ctx)->pbuf) - FSSL_MAX_BLOCK_SIZE)
 
-static void cipher_writer_fill(CipherWriter* ctx, const uint8_t* buf,
-                               const size_t n, size_t* w) {
+static void cipher_writer_fill(CipherWriter* ctx,
+                               const uint8_t* buf,
+                               const size_t n,
+                               size_t* w) {
   while (*w < n && ctx->pbuflen < sizeofpending(ctx)) {
     const size_t available = ssl_min(sizeofpending(ctx) - ctx->pbuflen, n - *w);
     ft_memmove(ctx->pbuf + ctx->pbuflen, buf + *w, available);
@@ -259,7 +265,8 @@ static void cipher_writer_fill(CipherWriter* ctx, const uint8_t* buf,
 }
 
 static ssize_t cipher_writer_flush(CipherWriter* ctx, const bool final) {
-  const size_t toencrypt = ctx->pbuflen - (ctx->streamable || final ? 0 : ctx->block_size);
+  const size_t toencrypt =
+      ctx->pbuflen - (ctx->streamable || final ? 0 : ctx->block_size);
   const ssize_t encrypted =
       fssl_cipher_encrypt(ctx->cipher, ctx->pbuf, ctx->ebuf, toencrypt);
   // Erase plaintext from memory in every case, but keep the last block if not streamable
@@ -283,7 +290,6 @@ static ssize_t cipher_writer_flush(CipherWriter* ctx, const bool final) {
 
   return 0;
 }
-
 
 /*!
  * Write \a n bytes from \a buf into the internal writer, this will encrypt them
@@ -341,7 +347,7 @@ static void cipher_writer_close(IoWriter* p) {
     goto out;
 
   if (!ctx->streamable) {
-  size_t added = 0;
+    size_t added = 0;
     const fssl_error_t err = fssl_pkcs5_pad(ctx->pbuf + ctx->pbuflen, ctx->pbuflen,
                                             sizeof(ctx->pbuf), ctx->block_size, &added);
     if fssl_haserr (err) {
