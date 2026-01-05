@@ -145,7 +145,6 @@ static fssl_force_inline size_t fssl_cipher_iv_size_internal(const fssl_cipher_t
         __builtin_trap();
       }
 
-      // TODO: Maybe create multiple modes? e.g: CTR_64LE, CTR_32BE
       return block_size - sizeof(uint32_t);
     default:
       __builtin_trap();
