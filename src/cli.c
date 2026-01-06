@@ -50,6 +50,8 @@ uint8_t g_failed = 0;
     DES_COMMAND_FLAGS, cipher_command_impl)                                          \
   V("des-ofb", cdata(cipher, cipherdata(fssl_cipher_des, CIPHER_MODE_OFB)),          \
     DES_COMMAND_FLAGS, cipher_command_impl)                                          \
+  V("des-pcbc", cdata(cipher, cipherdata(fssl_cipher_des, CIPHER_MODE_PCBC)),        \
+    DES_COMMAND_FLAGS, cipher_command_impl)                                          \
   V("des3", cdata(cipher, cipherdata(fssl_cipher_des3, CIPHER_MODE_CBC)),            \
     DES_COMMAND_FLAGS, cipher_command_impl)                                          \
   V("des3-ecb", cdata(cipher, cipherdata(fssl_cipher_des3, CIPHER_MODE_ECB)),        \
@@ -61,6 +63,8 @@ uint8_t g_failed = 0;
   V("des3-cfb", cdata(cipher, cipherdata(fssl_cipher_des3, CIPHER_MODE_CFB)),        \
     DES_COMMAND_FLAGS, cipher_command_impl)                                          \
   V("des3-ofb", cdata(cipher, cipherdata(fssl_cipher_des3, CIPHER_MODE_OFB)),        \
+    DES_COMMAND_FLAGS, cipher_command_impl)                                          \
+  V("des3-pcbc", cdata(cipher, cipherdata(fssl_cipher_des3, CIPHER_MODE_PCBC)),      \
     DES_COMMAND_FLAGS, cipher_command_impl)                                          \
   V("chacha20", cdata(cipher, cipherdata(fssl_cipher_chacha20, CIPHER_MODE_STREAM)), \
     DES_COMMAND_FLAGS, cipher_command_impl)

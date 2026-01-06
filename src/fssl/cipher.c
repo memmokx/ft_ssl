@@ -128,10 +128,11 @@ static const auto ERR_BLOCK_SIZE_TOO_SMALL = libft_static_string(
 static fssl_force_inline size_t fssl_cipher_iv_size_internal(const fssl_cipher_t* cipher) {
   switch (cipher->mode) {
     case CIPHER_MODE_ECB:
-        return 0;
+      return 0;
     case CIPHER_MODE_STREAM:
       return cipher->desc->iv_size_hint;
     case CIPHER_MODE_CBC:
+    case CIPHER_MODE_PCBC:
     case CIPHER_MODE_OFB:
     case CIPHER_MODE_CFB:
       return fssl_cipher_block_size(cipher);
@@ -163,6 +164,7 @@ fssl_cipher_set_mode_data_internal(fssl_cipher_t* c, const fssl_slice_t iv) {
   ft_bzero(&c->mode_data, sizeof(c->mode_data));
 
   switch (c->mode) {
+    case CIPHER_MODE_PCBC:
     case CIPHER_MODE_CBC:
       ft_memcpy(c->mode_data.cbc.state, data, size);
       break;
@@ -237,6 +239,7 @@ fssl_force_inline bool fssl_cipher_streamable(const fssl_cipher_t* cipher) {
     case CIPHER_MODE_CTR:
     case CIPHER_MODE_CFB:
     case CIPHER_MODE_OFB:
+    case CIPHER_MODE_STREAM:
       return true;
     default:
       return false;
@@ -619,19 +622,86 @@ static ssize_t ofb_decrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, 
 }
 
 static ssize_t pcbc_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
-  (void)ctx;
-  (void)in;
-  (void)out;
-  (void)n;
-  return -1;
+  const size_t block_size = fssl_cipher_block_size(ctx);
+  size_t w = 0;
+
+  if (n % block_size != 0)
+    return -1;
+
+  uint8_t buf[FSSL_MAX_BLOCK_SIZE];
+  uint8_t plain[FSSL_MAX_BLOCK_SIZE];
+
+  // Copy the previous state or the IV if this is the first time.
+  for (size_t i = 0; i < block_size; i++)
+    buf[i] = ctx->mode_data.cbc.state[i];
+
+  while (n >= block_size) {
+    for (size_t i = 0; i < block_size; i++) {
+      buf[i] ^= in[i];
+      plain[i] = in[i];
+    }
+
+    ctx->desc->encrypt(ctx->instance, buf, out);
+
+    for (size_t i = 0; i < block_size; i++)
+      buf[i] = out[i] ^ plain[i];
+
+    w += block_size;
+    in += block_size;
+    out += block_size;
+
+    n -= block_size;
+  }
+
+  for (size_t i = 0; i < block_size; i++)
+    ctx->mode_data.cbc.state[i] = buf[i];
+
+  return (ssize_t)w;
 }
 
 static ssize_t pcbc_decrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
-  (void)ctx;
-  (void)in;
-  (void)out;
-  (void)n;
-  return -1;
+  const bool inplace = in == nullptr;
+  const size_t block_size = fssl_cipher_block_size(ctx);
+
+  uint8_t* state = ctx->mode_data.cbc.state;
+  size_t w = 0;
+
+  if (n % block_size != 0)
+    return -1;
+
+  uint8_t buf[FSSL_MAX_BLOCK_SIZE];
+
+  while (n >= block_size) {
+    for (size_t i = 0; i < block_size; i++)
+      buf[i] = state[i];
+
+    // The current ciphertext block is used to xor the next decrypted block
+    // but since we decrypt in place we need to save it!
+    if (inplace)
+      for (size_t i = 0; i < block_size; i++)
+        state[i] = out[i];
+
+    ctx->desc->decrypt(ctx->instance, (inplace) ? nullptr : in, out);
+
+    for (size_t i = 0; i < block_size; i++)
+      out[i] ^= buf[i];
+
+    // Save the ciphertext for the next block
+    if (!inplace)
+      for (size_t i = 0; i < block_size; i++)
+        state[i] = in[i];
+
+    for (size_t i = 0; i < block_size; i++)
+      state[i] ^= out[i];
+
+    w += block_size;
+    in += block_size * (!inplace);  // keep ubsan happy
+    out += block_size;
+
+    n -= block_size;
+  }
+
+  return (ssize_t)w;
 }
 
 static ssize_t stream_encrypt(fssl_cipher_t* ctx, const uint8_t* in, uint8_t* out, size_t n) {
