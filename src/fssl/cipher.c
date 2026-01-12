@@ -69,7 +69,7 @@ fssl_error_t fssl_cipher_new(fssl_cipher_t* cipher,
     case CIPHER_MODE_STREAM:
       if (desc->type != CIPHER_STREAM) {
         err = FSSL_ERR_INVALID_ARGUMENT;
-        write(STDERR_FILENO, ERR_INVALID_MODE.ptr, ERR_INVALID_MODE.len);
+        (void)write(STDERR_FILENO, ERR_INVALID_MODE.ptr, ERR_INVALID_MODE.len);
       } else {
         if (desc->encrypt_stream == nullptr || desc->decrypt_stream == nullptr)
           err = FSSL_ERR_INVALID_ARGUMENT;
@@ -78,7 +78,7 @@ fssl_error_t fssl_cipher_new(fssl_cipher_t* cipher,
       break;
     default:
       err = FSSL_ERR_INVALID_ARGUMENT;
-      write(STDERR_FILENO, ERR_INVALID_MODE.ptr, ERR_INVALID_MODE.len);
+      (void)write(STDERR_FILENO, ERR_INVALID_MODE.ptr, ERR_INVALID_MODE.len);
       break;
   }
 done:
@@ -142,7 +142,7 @@ static fssl_force_inline size_t fssl_cipher_iv_size_internal(const fssl_cipher_t
       const size_t block_size = fssl_cipher_block_size(cipher);
       // Even if this is highly insecure the minimum block_size we accept is 8
       if (block_size < 2 * sizeof(uint32_t)) {
-        write(STDERR_FILENO, ERR_BLOCK_SIZE_TOO_SMALL.ptr, ERR_BLOCK_SIZE_TOO_SMALL.len);
+        (void)write(STDERR_FILENO, ERR_BLOCK_SIZE_TOO_SMALL.ptr, ERR_BLOCK_SIZE_TOO_SMALL.len);
         __builtin_trap();
       }
 

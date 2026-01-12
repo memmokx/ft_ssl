@@ -14,7 +14,7 @@ int	ft_fprintf(int fd, const char *format, ...)
 	ret = ft_vsprintf(&buffer, format, args);
 	if (ret != -1)
 	{
-		write(fd, buffer, ret);
+		(void)write(fd, buffer, ret);
 		free(buffer);
 	}
 	va_end(args);
