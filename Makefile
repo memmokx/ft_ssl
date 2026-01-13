@@ -103,7 +103,7 @@ lit-test-bonus: bonus
 	@lit --path="$(PWD)" -v --timeout 2 $(BASE_LIT_TESTS) tests/cli/des-bonus
 
 lit-test: $(NAME)
-	@lit --path="$(PWD)" --timeout 2 $(BASE_LIT_TESTS)
+	@lit --path="$(PWD)" -v --timeout 2 $(BASE_LIT_TESTS)
 
 $(LIBFSSL): $(LIBFSSL_OBJ) $(LIBFT)
 	$(CC) -shared $(CFLAGS) $(LIBFSSL_OBJ) $(LIBFT) -o $@ $(LIBS) $(INCLUDE)
