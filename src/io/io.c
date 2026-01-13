@@ -61,7 +61,6 @@ void io_writer_close(IoWriter* writer) {
     writer->vt->close(writer);
 }
 
-
 ssize_t io_copy(IoReader* reader, IoWriter* writer) {
   if (!reader || !writer)
     return -1;

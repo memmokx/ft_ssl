@@ -1,0 +1,3 @@
+# RUN: echo "Hello World ! ft_ssl_des" | ft_ssl base64 &>%t.user
+# RUN: echo "Hello World ! ft_ssl_des" | base64 &>%t.real
+# RUN: cmp %t.user %t.real

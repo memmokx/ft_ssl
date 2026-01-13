@@ -42,7 +42,7 @@ uint8_t g_failed = 0;
   V("sha512", cdata(hash, fssl_hash_sha512), HASH_COMMAND_FLAGS, digest_command_impl) \
   V("blake2", cdata(hash, fssl_hash_blake2), HASH_COMMAND_FLAGS, digest_command_impl)
 
-#if FSSL_CLI_FEATURES > FSSL_DES_VANILLA
+#if FSSL_CLI_FEATURES >= FSSL_DES_BONUS
 #define FOREACH_BONUS_CIPHER(V)                                                      \
   V("des-ctr", cdata(cipher, cipherdata(fssl_cipher_des, CIPHER_MODE_CTR)),          \
     DES_COMMAND_FLAGS, cipher_command_impl)                                          \

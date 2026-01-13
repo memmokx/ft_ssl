@@ -1,5 +1,7 @@
 #include <commands.h>
 #include <io.h>
+#include <stdlib.h>
+#include "libft/io.h"
 
 typedef enum {
   OP_ENCODE,
@@ -92,7 +94,7 @@ int base64_command_impl(string command,
                         char**) {
   SSL_COMMAND_PROLOGUE(command);
 
-  int exit_code = 0;
+  int exit_code = EXIT_SUCCESS;
 
   const Operation op = command_operation(flags);
   const cli_flag_t* input_flag = cli_flags_get(flags, BASE64_FLAG_INPUT);
@@ -102,12 +104,12 @@ int base64_command_impl(string command,
   auto writer = (IoWriter*)io_stdout;
 
   if (!base64_reader(&reader, op, input_flag)) {
-    exit_code = 1;
+    exit_code = EXIT_FAILURE;
     goto done;
   }
 
   if (!base64_writer(&writer, op, output_flag)) {
-    exit_code = 1;
+    exit_code = EXIT_FAILURE;
     goto done;
   }
 
@@ -118,6 +120,9 @@ int base64_command_impl(string command,
 
 done:
   io_writer_close(writer);
+
+  if (exit_code == EXIT_SUCCESS && output_flag == nullptr && op == OP_ENCODE)
+    ft_putchar('\n');
 
   io_free(writer);
   io_free(reader);

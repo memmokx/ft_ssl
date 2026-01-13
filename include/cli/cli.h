@@ -9,10 +9,10 @@
 #define FSSL_CLI_FEATURES 0
 #endif
 
-static constexpr auto FSSL_MD5_VANILLA = 0;
-static constexpr auto FSSL_MD5_BONUS = 1;
-static constexpr auto FSSL_DES_VANILLA = 2;
-static constexpr auto FSSL_DES_BONUS = 3;
+#define FSSL_MD5_VANILLA 0
+#define FSSL_MD5_BONUS 1
+#define FSSL_DES_VANILLA 2
+#define FSSL_DES_BONUS 3
 
 constexpr size_t CLI_FLAGS_PER_COMMAND = 32;
 constexpr size_t CLI_FLAGS_MAX = 256;
