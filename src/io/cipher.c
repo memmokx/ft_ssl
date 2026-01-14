@@ -343,9 +343,6 @@ static void cipher_writer_close(IoWriter* p) {
   if (!ctx)
     return;
 
-  if (ctx->pbuflen == 0)
-    goto out;
-
   if (!ctx->streamable) {
     size_t added = 0;
     const fssl_error_t err = fssl_pkcs5_pad(ctx->pbuf + ctx->pbuflen, ctx->pbuflen,
