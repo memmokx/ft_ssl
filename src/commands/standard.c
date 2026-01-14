@@ -121,9 +121,6 @@ int base64_command_impl(string command,
 done:
   io_writer_close(writer);
 
-  if (exit_code == EXIT_SUCCESS && output_flag == nullptr && op == OP_ENCODE)
-    ft_putchar('\n');
-
   io_free(writer);
   io_free(reader);
 

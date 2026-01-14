@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "io.h"
 
 typedef enum {
@@ -357,6 +358,7 @@ static void b64_writer_close(IoWriter* ptr) {
   if (ctx->buflen > 0)
     b64_writer_flush(ctx, ctx->buf, ctx->buflen);
 
+  io_writer_write(ctx->inner, (uint8_t[]){'\n'}, 1);
   io_writer_close(ctx->inner);
 }
 
