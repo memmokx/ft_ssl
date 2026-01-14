@@ -1,0 +1,4 @@
+# RUN: echo -n "11111111" > %t
+# RUN: <%t openssl des-ecb $SSLFLAGS -pass "pass:ft_ssl_des" -S C79F563F6363B504 >%t.openssl
+# RUN: <%t ft_ssl des-ecb -p "ft_ssl_des" -s C79F563F6363B504 >%t.fssl
+# RUN: cmp %t.fssl %t.openssl

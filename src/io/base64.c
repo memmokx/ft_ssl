@@ -297,7 +297,7 @@ static ssize_t b64_writer_write(IoWriter* ptr, const uint8_t* buf, size_t n) {
 
     if (ctx->buflen < 3)
       goto done;
-    if (b64_writer_flush(ctx, ctx->buf, sizeof(ctx->buflen)) < 0)
+    if (b64_writer_flush(ctx, ctx->buf, ctx->buflen) < 0)
       return -1;
 
     ctx->buflen = 0;
